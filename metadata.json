@@ -1,0 +1,6 @@
+{
+  "name": "ValorBadge",
+  "description": "Your Service. Your Skills. Your Next Mission. Helping military veterans, ex-service personnel, and Agniveers transition to civilian careers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

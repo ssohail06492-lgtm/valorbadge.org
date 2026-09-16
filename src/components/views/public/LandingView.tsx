@@ -1,0 +1,391 @@
+import React from 'react';
+import { motion } from 'motion/react';
+import { 
+  ShieldCheck, 
+  ArrowRight, 
+  Briefcase, 
+  Sparkles, 
+  Cpu, 
+  FileText, 
+  Building2, 
+  GraduationCap, 
+  Bot, 
+  CheckCircle2, 
+  Layers, 
+  Lock,
+  ChevronRight,
+  TrendingUp,
+  MapPin
+} from 'lucide-react';
+import { useApp } from '../../../context/AppContext';
+import { HeroCareerPathway } from '../../common/HeroCareerPathway';
+import { SecurityNoticeBanner } from '../../common/SecurityNoticeBanner';
+import { DemoDataBadge } from '../../common/DemoDataBadge';
+import { DEMO_JOBS, DEMO_SCHEMES } from '../../../lib/demoData';
+import { getTranslation } from '../../../lib/i18n';
+
+export const LandingView: React.FC = () => {
+  const { setCurrentRoute, setIsOnboardingOpen, language } = useApp();
+  const t = getTranslation(language);
+
+  const steps = [
+    {
+      num: '01',
+      title: 'Build Your Profile',
+      desc: 'Enter your service branch, duration, and general operational duties into our safe, zero-tactical profile system.',
+      route: 'service_profile' as const
+    },
+    {
+      num: '02',
+      title: 'Translate Your Skills',
+      desc: 'Our ontology framework automatically maps military commands, logistics, and drills into standard civilian competencies.',
+      route: 'skill_translator' as const
+    },
+    {
+      num: '03',
+      title: 'Discover Careers',
+      desc: 'Explore high-demand corporate and industrial roles tailored to your exact leadership level and technical aptitude.',
+      route: 'career_matches' as const
+    },
+    {
+      num: '04',
+      title: 'Build Your Resume',
+      desc: 'Generate recruiter-ready civilian resumes with ATS-friendly corporate phrasing, eliminating military jargon.',
+      route: 'resume_builder' as const
+    },
+    {
+      num: '05',
+      title: 'Find Opportunities',
+      desc: 'Browse jobs and internships from companies seeking veteran discipline, crisis management, and integrity.',
+      route: 'jobs' as const
+    },
+    {
+      num: '06',
+      title: 'Connect With Employers',
+      desc: 'Communicate directly with verified corporate hiring managers and HR teams via secure messaging.',
+      route: 'messages' as const
+    }
+  ];
+
+  const features = [
+    {
+      title: 'Military-to-Civilian Translation',
+      desc: 'Turn general service experience into civilian-friendly professional skills without compromising operational security.',
+      icon: Cpu,
+      route: 'skill_translator' as const,
+      badge: 'Core Technology'
+    },
+    {
+      title: 'Career Matching',
+      desc: 'Discover careers based on skills, education and service experience with quantitative match scores.',
+      icon: Sparkles,
+      route: 'career_matches' as const,
+      badge: 'Algorithmic'
+    },
+    {
+      title: 'Civilian Resume Builder',
+      desc: 'Create professional civilian resumes formatted to impress modern corporate hiring panels.',
+      icon: FileText,
+      route: 'resume_builder' as const,
+      badge: 'Interactive'
+    },
+    {
+      title: 'Verified Civilian Jobs',
+      desc: 'Discover relevant employment opportunities from veteran-friendly verified corporate partners.',
+      icon: Briefcase,
+      route: 'jobs' as const,
+      badge: 'Curated'
+    },
+    {
+      title: 'Government Resources',
+      desc: 'Find potentially relevant central schemes, DGR resettlement courses, and state-level welfare programs.',
+      icon: ShieldCheck,
+      route: 'government_schemes' as const,
+      badge: 'Public Welfare'
+    },
+    {
+      title: 'AI Career Assistant (ValorAI)',
+      desc: 'Get personalized career transition guidance, salary benchmarks, and interview preparation advice.',
+      icon: Bot,
+      route: 'valor_ai' as const,
+      badge: 'Interactive AI'
+    },
+    {
+      title: 'Employer Hiring Portal',
+      desc: 'Allow companies to discover, evaluate, and hire veteran talent for operations, logistics, and tech leadership.',
+      icon: Building2,
+      route: 'for_employers' as const,
+      badge: 'Enterprise'
+    }
+  ];
+
+  return (
+    <div className="w-full space-y-16 py-6 sm:py-10">
+      
+      {/* 1. HERO SECTION */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Security Alert Header */}
+        <div className="mb-6">
+          <SecurityNoticeBanner />
+        </div>
+
+        <div className="text-center max-w-4xl mx-auto pt-4 pb-2">
+          
+          {/* Subtle Tagline Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono uppercase tracking-widest mb-6">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span>Empowering Veterans & Agniveers for Civilian Careers</span>
+          </div>
+
+          {/* Main Title & Tagline */}
+          <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight font-display leading-[1.15] mb-4">
+            Valor<span className="text-cyan-400">Badge</span>
+          </h1>
+
+          <p className="text-xl sm:text-2xl font-bold text-slate-200 tracking-tight font-display mb-4">
+            “Your Service. Your Skills. Your Next Mission.”
+          </p>
+
+          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed mb-8">
+            Turn your service experience into civilian career opportunities. A dedicated, privacy-first transition platform for veterans, Agniveers, and service personnel.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <button
+              onClick={() => setIsOnboardingOpen(true)}
+              className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-sm sm:text-base tracking-wide shadow-xl shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setCurrentRoute('jobs')}
+              className="px-7 py-3.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-500/50 font-bold text-sm sm:text-base tracking-wide transition-all flex items-center gap-2"
+            >
+              <Briefcase className="w-4 h-4 text-cyan-400" />
+              <span>Explore Jobs</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentRoute('for_employers')}
+              className="px-7 py-3.5 rounded-xl bg-slate-950/60 hover:bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 font-semibold text-sm sm:text-base tracking-wide transition-all flex items-center gap-2"
+            >
+              <Building2 className="w-4 h-4 text-slate-400" />
+              <span>For Employers</span>
+            </button>
+          </div>
+
+        </div>
+
+        {/* Signature Animated Career Pathway (SERVICE ↓ SKILLS ↓ EXPERIENCE ↓ CAREER) */}
+        <div className="mt-8">
+          <HeroCareerPathway />
+        </div>
+
+      </section>
+
+      {/* 2. HOW VALORBADGE WORKS */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-semibold">
+            Structured Transition Architecture
+          </span>
+          <h2 className="text-3xl font-bold text-white font-display mt-2">
+            How ValorBadge Works
+          </h2>
+          <p className="text-slate-400 text-sm mt-3 leading-relaxed">
+            A step-by-step career path turning military discipline and operational logistics into verified civilian leadership opportunities.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {steps.map((step) => (
+            <div
+              key={step.num}
+              onClick={() => setCurrentRoute(step.route)}
+              className="p-6 rounded-2xl bg-[#071328]/80 border border-slate-800 hover:border-cyan-500/40 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-950/40 group cursor-pointer flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-2xl font-black font-mono text-cyan-400/80 group-hover:text-cyan-300 transition-colors">
+                    {step.num}
+                  </span>
+                  <span className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 group-hover:text-cyan-400 group-hover:border-cyan-500/30 transition-colors">
+                    <ChevronRight className="w-4 h-4" />
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-white mb-2 group-hover:text-cyan-200 transition-colors">
+                  {step.title}
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {step.desc}
+                </p>
+              </div>
+              <div className="mt-5 pt-3 border-t border-slate-800/60 flex items-center text-[11px] text-cyan-400 font-medium">
+                <span>Explore step</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 3. PREMIUM FEATURE CARDS */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-semibold">
+            Comprehensive Capabilities
+          </span>
+          <h2 className="text-3xl font-bold text-white font-display mt-2">
+            Engineered for Military-to-Civilian Success
+          </h2>
+          <p className="text-slate-400 text-sm mt-3 leading-relaxed">
+            Every feature is calibrated to bridge military terminology with corporate recruiting criteria.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.map((feat) => {
+            const Icon = feat.icon;
+            return (
+              <div
+                key={feat.title}
+                onClick={() => setCurrentRoute(feat.route)}
+                className="p-6 rounded-2xl bg-gradient-to-b from-[#08152c]/90 to-[#050f22]/90 border border-slate-800/90 hover:border-cyan-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-cyan-950/40 group cursor-pointer flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300">
+                      {feat.badge}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">
+                    {feat.title}
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {feat.desc}
+                  </p>
+                </div>
+                <div className="mt-6 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-cyan-400 font-medium">
+                  <span>Open module</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 4. LIVE PREVIEWS: JOBS & SCHEMES (WITH CLEAR DEMO DATA BADGES) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl bg-[#061226]/80 border border-slate-800 p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800 mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-semibold">
+                  Preview Feed
+                </span>
+                <DemoDataBadge />
+              </div>
+              <h3 className="text-xl font-bold text-white font-display">
+                Latest Veteran-Friendly Civilian Opportunities
+              </h3>
+            </div>
+            <button
+              onClick={() => setCurrentRoute('jobs')}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyan-300 transition-colors flex items-center gap-1.5"
+            >
+              <span>View All Opportunities</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {DEMO_JOBS.slice(0, 2).map((job) => (
+              <div
+                key={job.id}
+                className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h4 className="text-sm font-bold text-white">{job.title}</h4>
+                    <DemoDataBadge size="sm" />
+                  </div>
+                  <p className="text-xs text-cyan-400 font-medium">{job.company}</p>
+                  <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{job.location} • {job.salaryRange}</span>
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2 line-clamp-2">
+                    {job.description}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {job.civilianSkillsMatched.slice(0, 2).map((skill) => (
+                      <span
+                        key={skill}
+                        className="text-[10px] px-2 py-0.5 rounded bg-cyan-950/40 text-cyan-300 border border-cyan-500/20"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                    {job.veteranFriendlyScore}% Match
+                  </span>
+                  <button
+                    onClick={() => setCurrentRoute('jobs')}
+                    className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                  >
+                    <span>View Role</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 5. COMMITMENT TO DATA PRIVACY */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl bg-gradient-to-r from-[#071328] via-[#091b38] to-[#071328] border border-cyan-500/20 p-6 sm:p-10 shadow-2xl">
+          <div className="max-w-3xl mx-auto text-center space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h3 className="text-2xl font-bold text-white font-display">
+              Zero Tactical Data Storage Guarantee
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              ValorBadge strictly isolates all military-civilian translation logic to high-level managerial, logistical, and technical competencies. We never collect or store operational data, deployment zones, weapon classifications, or classified communications.
+            </p>
+            <div className="pt-2 flex flex-wrap justify-center gap-3">
+              <button
+                onClick={() => setCurrentRoute('privacy_center')}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-bold text-cyan-300 hover:bg-slate-800 transition-colors"
+              >
+                Inspect Privacy Center
+              </button>
+              <button
+                onClick={() => setCurrentRoute('privacy')}
+                className="px-5 py-2.5 rounded-xl bg-transparent border border-slate-800 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                Read Security Policy
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  );
+};
