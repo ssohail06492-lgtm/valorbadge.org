@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Cpu, Briefcase, Award } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 interface LoadingSequenceProps {
   onComplete?: () => void;
@@ -8,6 +9,7 @@ interface LoadingSequenceProps {
 }
 
 export const LoadingSequence: React.FC<LoadingSequenceProps> = ({ onComplete, standalone = false }) => {
+  const { t } = useApp();
   const [step, setStep] = useState<number>(0);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export const LoadingSequence: React.FC<LoadingSequenceProps> = ({ onComplete, st
               Valor<span className="text-cyan-400">Badge</span>
             </h1>
             <p className="text-xs text-slate-400 font-mono tracking-widest uppercase mt-1">
-              Your Service. Your Skills. Your Next Mission.
+              {t('Your Service. Your Skills. Your Next Mission.')}
             </p>
           </motion.div>
 
@@ -109,7 +111,7 @@ export const LoadingSequence: React.FC<LoadingSequenceProps> = ({ onComplete, st
                       <Icon className="w-4 h-4" />
                     </div>
                     <span className="text-[9px] font-mono text-slate-400 mt-1 uppercase font-semibold">
-                      {node.label}
+                      {t(node.label)}
                     </span>
                   </motion.div>
                   {i < 3 && (
@@ -126,7 +128,7 @@ export const LoadingSequence: React.FC<LoadingSequenceProps> = ({ onComplete, st
 
           <div className="mt-8 flex items-center space-x-2 text-xs text-slate-400 font-mono">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-            <span>Initializing secure translation environment...</span>
+            <span>{t('Initializing secure translation environment...')}</span>
           </div>
         </div>
       </motion.div>

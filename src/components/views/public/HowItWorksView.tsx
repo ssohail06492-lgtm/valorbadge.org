@@ -14,7 +14,7 @@ import { useApp } from '../../../context/AppContext';
 import { SecurityNoticeBanner } from '../../common/SecurityNoticeBanner';
 
 export const HowItWorksView: React.FC = () => {
-  const { setCurrentRoute, setIsOnboardingOpen } = useApp();
+  const { setCurrentRoute, setIsOnboardingOpen, t } = useApp();
 
   const workflow = [
     {
@@ -97,13 +97,13 @@ export const HowItWorksView: React.FC = () => {
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono">
-          <span>STEP-BY-STEP METHODOLOGY</span>
+          <span>{t('STEP-BY-STEP METHODOLOGY')}</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-white font-display">
-          How ValorBadge Works
+          {t('How ValorBadge Works')}
         </h1>
         <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-          From uniform to corporate leadership: a safe, structured, and privacy-first methodology designed specifically for armed forces veterans and Agniveers.
+          {t('From uniform to corporate leadership: a safe, structured, and privacy-first methodology designed specifically for armed forces veterans and Agniveers.')}
         </p>
       </div>
 
@@ -129,17 +129,17 @@ export const HowItWorksView: React.FC = () => {
 
               <div className="flex-1 space-y-3">
                 <h3 className="text-lg font-bold text-white">
-                  {item.title}
+                  {t(item.title)}
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                  {item.desc}
+                  {t(item.desc)}
                 </p>
 
                 <div className="space-y-1.5 pt-1">
                   {item.details.map((detail, dIdx) => (
                     <div key={dIdx} className="flex items-start space-x-2 text-xs text-slate-400">
                       <CheckCircle className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-                      <span>{detail}</span>
+                      <span>{t(detail)}</span>
                     </div>
                   ))}
                 </div>
@@ -149,7 +149,7 @@ export const HowItWorksView: React.FC = () => {
                     onClick={() => setCurrentRoute(item.route)}
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
                   >
-                    <span>Launch this step</span>
+                    <span>{t('Launch this step')}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -162,16 +162,16 @@ export const HowItWorksView: React.FC = () => {
       {/* CTA Box */}
       <div className="p-8 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900 to-indigo-950/40 border border-cyan-500/30 text-center space-y-4">
         <h2 className="text-2xl font-bold text-white font-display">
-          Ready to Begin Your Next Mission?
+          {t('Ready to Begin Your Next Mission?')}
         </h2>
         <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
-          Start with our 2-minute onboarding flow to immediately translate your skills into high-paying civilian career pathways.
+          {t('Start with our 2-minute onboarding flow to immediately translate your skills into high-paying civilian career pathways.')}
         </p>
         <button
           onClick={() => setIsOnboardingOpen(true)}
           className="px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm tracking-wide shadow-lg shadow-cyan-500/20 transition-all inline-flex items-center gap-2"
         >
-          <span>Start Onboarding Now</span>
+          <span>{t('Start Onboarding Now')}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

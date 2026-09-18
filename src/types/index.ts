@@ -124,6 +124,8 @@ export interface ServiceProfileData {
   visibility: ProfileVisibility;
   allowAiEnhancement?: boolean;
   profileCompleted: boolean;
+  hasConsentedToPrivacy?: boolean;
+  consentTimestamp?: string;
   disabilityStatus?: {
     hasDisability: boolean;
     category?: string;

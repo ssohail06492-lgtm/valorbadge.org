@@ -11,6 +11,7 @@ import { Header } from './components/common/Header';
 import { Footer } from './components/common/Footer';
 import { MobileNavigation } from './components/common/MobileNavigation';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
+import { AuthAndSecurityModal } from './components/security/AuthAndSecurityModal';
 
 // Public Views
 import { LandingView } from './components/views/public/LandingView';
@@ -150,8 +151,11 @@ const MainContent: React.FC = () => {
       {/* Mobile Bottom Navigation with ValorAI Central FAB */}
       <MobileNavigation />
 
-      {/* 4-Step Onboarding Modal */}
+      {/* 5-Step Onboarding Modal with Consent & Privacy Agreement */}
       <OnboardingModal />
+
+      {/* Security & Authentication Modal */}
+      <AuthAndSecurityModal />
     </div>
   );
 };

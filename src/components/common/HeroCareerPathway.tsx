@@ -73,7 +73,7 @@ const STAGES: Stage[] = [
 ];
 
 export const HeroCareerPathway: React.FC = () => {
-  const { reducedMotion, setCurrentRoute } = useApp();
+  const { reducedMotion, setCurrentRoute, t } = useApp();
   const [activeStageId, setActiveStageId] = useState<string>('service');
 
   const currentStage = STAGES.find(s => s.id === activeStageId) || STAGES[0];
@@ -92,10 +92,10 @@ export const HeroCareerPathway: React.FC = () => {
           </span>
           <div>
             <p className="text-xs font-semibold tracking-widest text-cyan-400 uppercase font-mono">
-              Core Transition Blueprint
+              {t('Core Transition Blueprint')}
             </p>
             <h2 className="text-lg sm:text-xl font-bold text-white font-display tracking-tight">
-              Service → Skills → Training → Career
+              {t('Service → Skills → Training → Career')}
             </h2>
           </div>
         </div>
@@ -104,7 +104,7 @@ export const HeroCareerPathway: React.FC = () => {
             onClick={() => setCurrentRoute('transition_plan')}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-semibold font-mono active:scale-95 transition-all touch-manipulation"
           >
-            <span>Open Transition Plan</span>
+            <span>{t('Open Transition Plan')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -155,23 +155,23 @@ export const HeroCareerPathway: React.FC = () => {
                     <Icon className="w-6 h-6" />
                   </div>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-cyan-400">
-                    {stage.label}
+                    {t(stage.label)}
                   </span>
                 </div>
 
                 {/* Title & Sub */}
                 <h3 className="text-base font-bold text-white tracking-wide font-display">
-                  {stage.title}
+                  {t(stage.title)}
                 </h3>
                 <p className="text-xs text-slate-300 mt-0.5 leading-relaxed font-medium">
-                  {stage.sub}
+                  {t(stage.sub)}
                 </p>
               </div>
 
               {/* Progress indicator bar inside card */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                 <span className={isSelected ? 'text-cyan-400 font-semibold' : ''}>
-                  {isSelected ? 'Active Phase' : 'Tap to inspect'}
+                  {t(isSelected ? 'Active Phase' : 'Tap to inspect')}
                 </span>
                 <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90 text-cyan-400' : ''}`} />
               </div>
@@ -194,17 +194,17 @@ export const HeroCareerPathway: React.FC = () => {
             <div className="space-y-2 max-w-2xl">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold uppercase border border-cyan-500/40">
-                  {currentStage.label} BLUEPRINT
+                  {t(currentStage.label)} {t('BLUEPRINT')}
                 </span>
                 <span className="text-xs text-slate-400">
-                  Phase Focus
+                  {t('Phase Focus')}
                 </span>
               </div>
               <h4 className="text-lg font-bold text-white font-display">
-                {currentStage.title}: {currentStage.sub}
+                {t(currentStage.title)}: {t(currentStage.sub)}
               </h4>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                {currentStage.details}
+                {t(currentStage.details)}
               </p>
 
               {/* Highlights pills */}
@@ -215,7 +215,7 @@ export const HeroCareerPathway: React.FC = () => {
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-300 text-[11px]"
                   >
                     <CheckCircle2 className="w-3 h-3 text-cyan-400" />
-                    {h}
+                    {t(h)}
                   </span>
                 ))}
               </div>
@@ -227,7 +227,7 @@ export const HeroCareerPathway: React.FC = () => {
                 onClick={() => setCurrentRoute(currentStage.route)}
                 className="w-full min-h-[44px] px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 touch-manipulation"
               >
-                <span>{currentStage.actionText}</span>
+                <span>{t(currentStage.actionText)}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -235,7 +235,7 @@ export const HeroCareerPathway: React.FC = () => {
                 onClick={() => setCurrentRoute('transition_plan')}
                 className="w-full min-h-[44px] px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold active:scale-95 transition-all flex items-center justify-center touch-manipulation"
               >
-                Detailed Roadmap
+                {t('Detailed Roadmap')}
               </button>
             </div>
           </div>
@@ -246,10 +246,10 @@ export const HeroCareerPathway: React.FC = () => {
       <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
         <span className="flex items-center gap-1 text-slate-400">
           <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-          Zero classified, operational, deployment, intelligence, or sensitive weapon data is requested or stored.
+          {t('Zero classified, operational, deployment, intelligence, or sensitive weapon data is requested or stored.')}
         </span>
         <span className="text-slate-400 font-mono text-[10px]">
-          Independent veteran transition support platform
+          {t('Independent veteran transition support platform')}
         </span>
       </div>
     </div>

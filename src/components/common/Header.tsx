@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, 
   Globe, 
@@ -9,22 +10,19 @@ import {
   User, 
   Building2, 
   ShieldAlert, 
-  Eye, 
   Sliders, 
-  Compass, 
   Briefcase, 
   GraduationCap, 
   FileText, 
-  Send, 
-  MessageSquare,
   ChevronDown,
   Layers,
-  Settings,
   HelpCircle,
-  Accessibility,
   Bot,
   Home,
-  Route
+  Route,
+  CheckCircle2,
+  Lock,
+  ExternalLink
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AppRoute, Role } from '../../types';
@@ -39,14 +37,17 @@ export const Header: React.FC = () => {
     language, 
     setLanguage,
     country,
-    setCountry,
     notifications,
+    clearNotifications,
     reducedMotion,
     setReducedMotion,
     largeText,
     setLargeText,
     triggerLoadingSequence,
-    setIsOnboardingOpen
+    setIsOnboardingOpen,
+    setIsAuthModalOpen,
+    authSession,
+    t
   } = useApp();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -55,80 +56,114 @@ export const Header: React.FC = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // Refs for outside click detection
+  const notifContainerRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
+  const quickJumpRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (notifContainerRef.current && !notifContainerRef.current.contains(target)) {
+        setIsNotifOpen(false);
+      }
+      if (langMenuRef.current && !langMenuRef.current.contains(target)) {
+        setIsLanguageMenuOpen(false);
+      }
+      if (quickJumpRef.current && !quickJumpRef.current.contains(target)) {
+        setIsQuickJumpOpen(false);
+      }
+      if (settingsRef.current && !settingsRef.current.contains(target)) {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
   const unreadNotifs = notifications.filter(n => !n.read).length;
 
   const handleNavClick = (route: AppRoute) => {
     setCurrentRoute(route);
     setIsMobileMenuOpen(false);
     setIsQuickJumpOpen(false);
+    setIsNotifOpen(false);
   };
 
-  const navItems: { label: string; route: AppRoute; icon: React.ElementType }[] = [
-    { label: 'Home', route: 'landing', icon: Home },
-    { label: 'Jobs', route: 'jobs', icon: Briefcase },
-    { label: 'Career', route: 'career_matches', icon: Sparkles },
-    { label: 'ValorAI', route: 'valor_ai', icon: Bot },
-    { label: 'Resume', route: 'resume_builder', icon: FileText },
-    { label: 'Learning', route: 'learning_hub', icon: GraduationCap },
-    { label: 'Schemes', route: 'government_schemes', icon: ShieldCheck },
-    { label: 'Transition Plan', route: 'transition_plan', icon: Route },
-    { label: 'Profile', route: 'service_profile', icon: User },
-    { label: 'Help', route: 'veteran_help_center', icon: HelpCircle },
+  const navItems: { labelKey: string; defaultLabel: string; route: AppRoute; icon: React.ElementType }[] = [
+    { labelKey: 'home', defaultLabel: 'Home', route: 'landing', icon: Home },
+    { labelKey: 'jobs', defaultLabel: 'Jobs', route: 'jobs', icon: Briefcase },
+    { labelKey: 'career', defaultLabel: 'Career', route: 'career_matches', icon: Sparkles },
+    { labelKey: 'valorAi', defaultLabel: 'ValorAI', route: 'valor_ai', icon: Bot },
+    { labelKey: 'resume', defaultLabel: 'Resume', route: 'resume_builder', icon: FileText },
+    { labelKey: 'learning', defaultLabel: 'Learning', route: 'learning_hub', icon: GraduationCap },
+    { labelKey: 'schemes', defaultLabel: 'Schemes', route: 'government_schemes', icon: ShieldCheck },
+    { labelKey: 'transitionPlan', defaultLabel: 'Plan', route: 'transition_plan', icon: Route },
+    { labelKey: 'profile', defaultLabel: 'Profile', route: 'service_profile', icon: User },
+    { labelKey: 'help', defaultLabel: 'Help', route: 'veteran_help_center', icon: HelpCircle },
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#060e1d]/90 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#060e1d]/95 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-18">
           
           {/* Brand Logo & Tagline */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <button
               onClick={() => handleNavClick('landing')}
-              className="flex items-center space-x-2.5 focus:outline-none group text-left"
+              className="flex items-center space-x-2.5 focus:outline-none group text-left touch-manipulation"
               aria-label="ValorBadge Home"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-slate-900 to-indigo-600 p-[1.5px] shadow-md shadow-cyan-500/20 group-hover:shadow-cyan-500/40 transition-shadow">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 via-slate-900 to-indigo-600 p-[1.5px] shadow-md shadow-cyan-500/20 group-hover:shadow-cyan-500/40 transition-shadow">
                 <div className="w-full h-full bg-[#071326] rounded-xl flex items-center justify-center">
                   <ShieldCheck className="w-5 h-5 text-cyan-400 group-hover:scale-105 transition-transform" />
                 </div>
               </div>
-              <div>
-                <span className="text-lg font-bold text-white tracking-tight font-display flex items-center gap-1">
+              <div className="overflow-hidden">
+                <span className="text-xl sm:text-2xl font-bold text-white tracking-tight font-display flex items-center gap-1">
                   Valor<span className="text-cyan-400">Badge</span>
                 </span>
-                <span className="hidden sm:block text-[9.5px] font-mono text-slate-400 tracking-wider uppercase -mt-0.5">
-                  Your Service. Your Skills. Your Next Mission.
+                <span className="hidden xl:block text-xs font-mono text-slate-400 tracking-wider uppercase -mt-0.5 truncate max-w-xs">
+                  {t('tagline')}
                 </span>
               </div>
             </button>
           </div>
 
           {/* Desktop Navigation Items */}
-          <nav className="hidden lg:flex items-center space-x-0.5 xl:space-x-1" aria-label="Main Navigation">
+          <nav className="hidden lg:flex items-center space-x-1" aria-label="Main Navigation">
             {navItems.map(item => {
               const isActive = currentRoute === item.route;
+              const label = t(item.labelKey) || item.defaultLabel;
               return (
                 <button
                   key={item.route}
                   onClick={() => handleNavClick(item.route)}
-                  className={`px-2 xl:px-2.5 py-1.5 rounded-lg text-[11px] xl:text-xs font-semibold tracking-tight transition-all duration-150 touch-manipulation whitespace-nowrap ${
+                  className={`px-2.5 xl:px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold tracking-tight transition-all duration-150 touch-manipulation whitespace-nowrap min-h-[38px] flex items-center gap-1.5 ${
                     isActive
-                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/20 font-bold'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/20 font-bold'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
                   }`}
                 >
-                  {item.label}
+                  {label}
                 </button>
               );
             })}
           </nav>
 
           {/* Action Tools & Controls */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
 
             {/* Role Switcher Pill */}
-            <div className="hidden sm:flex items-center rounded-lg bg-slate-900/90 border border-slate-700/80 p-0.5 text-[11px] font-mono">
+            <div className="hidden sm:flex items-center rounded-xl bg-slate-900/90 border border-slate-700/80 p-0.5 text-xs font-medium">
               {(['user', 'employer', 'admin'] as Role[]).map(r => (
                 <button
                   key={r}
@@ -138,348 +173,348 @@ export const Header: React.FC = () => {
                     else if (r === 'admin') setCurrentRoute('admin_dashboard');
                     else setCurrentRoute('dashboard');
                   }}
-                  className={`px-2.5 py-1 rounded capitalize font-medium transition-all ${
+                  className={`px-2.5 py-1.5 rounded-lg transition-all capitalize whitespace-nowrap min-h-[32px] ${
                     currentRole === r
                       ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
-                  title={`Switch role to ${r}`}
                 >
-                  {r === 'user' ? 'Veteran' : r}
+                  {r === 'user' ? t('veteran') : r === 'employer' ? t('employer') : t('admin')}
                 </button>
               ))}
             </div>
 
-            {/* Quick 42-Area Jump Drawer Button */}
-            <div className="relative">
+            {/* Security & Auth Button */}
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-2.5 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:text-white hover:border-cyan-500/40 flex items-center gap-1.5 text-xs font-semibold min-h-[40px] touch-manipulation transition-colors"
+              title={t('securitySettings')}
+              aria-label={t('securitySettings')}
+            >
+              <Lock className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden md:inline">
+                {authSession?.isAuthenticated ? (currentRole === 'admin' ? t('admin') : currentRole === 'employer' ? t('employer') : t('veteran')) : t('signIn')}
+              </span>
+            </button>
+
+            {/* Quick Navigation Jump (All Portals) */}
+            <div className="relative" ref={quickJumpRef}>
               <button
                 onClick={() => setIsQuickJumpOpen(!isQuickJumpOpen)}
-                className="p-2 rounded-lg bg-slate-900/80 border border-slate-700/70 text-slate-300 hover:text-white hover:border-cyan-500/40 text-xs font-mono flex items-center gap-1.5"
-                title="All 42 Application Areas Quick Selector"
-                aria-label="All Application Sections"
+                className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:text-white hover:border-cyan-500/40 flex items-center gap-1 text-xs min-h-[40px] touch-manipulation"
+                title={t('quickNavigation')}
+                aria-label={t('quickNavigation')}
               >
-                <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden md:inline">Areas</span>
+                <Layers className="w-4 h-4 text-cyan-400" />
+                <span className="hidden xl:inline text-xs font-semibold">{t('quickNavigation')}</span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
 
-              {isQuickJumpOpen && (
-                <div className="absolute right-0 mt-2 w-72 md:w-80 max-h-[75vh] overflow-y-auto rounded-xl bg-[#071326] border border-cyan-500/30 shadow-2xl p-3 z-50 text-xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
-                    <span className="font-mono text-cyan-400 font-bold uppercase text-[11px]">
-                      Complete System Index (42 Areas)
-                    </span>
-                    <button 
-                      onClick={() => setIsQuickJumpOpen(false)}
-                      className="text-slate-400 hover:text-white"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* PUBLIC */}
-                  <div className="mb-3">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold block mb-1">
-                      Public Sections (1-7)
-                    </span>
-                    <div className="space-y-0.5">
-                      {[
-                        { r: 'landing', label: '1. Landing Page' },
-                        { r: 'how_it_works', label: '2. How It Works' },
-                        { r: 'about', label: '3. About ValorBadge' },
-                        { r: 'for_employers', label: '4. For Employers' },
-                        { r: 'privacy', label: '5. Privacy Policy' },
-                        { r: 'terms', label: '6. Terms of Service' },
-                        { r: 'contact', label: '7. Contact & Help' },
-                      ].map(item => (
-                        <button
-                          key={item.r}
-                          onClick={() => handleNavClick(item.r as AppRoute)}
-                          className="w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800 hover:text-cyan-300"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
+              <AnimatePresence>
+                {isQuickJumpOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl bg-[#071326] border border-cyan-500/40 shadow-2xl p-3 z-50 text-xs max-h-[75vh] overflow-y-auto"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+                      <span className="font-mono text-cyan-400 font-bold uppercase text-xs">
+                        {t('quickNavigation')}
+                      </span>
+                      <button onClick={() => setIsQuickJumpOpen(false)} aria-label={t('close')}>
+                        <X className="w-4 h-4 text-slate-400 hover:text-white" />
+                      </button>
                     </div>
-                  </div>
 
-                  {/* USER */}
-                  <div className="mb-3">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold block mb-1">
-                      Veteran / User Portal (8-25)
-                    </span>
-                    <div className="space-y-0.5">
-                      {[
-                        { r: 'dashboard', label: '8. Dashboard' },
-                        { r: 'service_profile', label: '9. Service Profile' },
-                        { r: 'skill_translator', label: '10. Skill Translator' },
-                        { r: 'career_matches', label: '11. Career Matches' },
-                        { r: 'jobs', label: '12. Jobs Feed' },
-                        { r: 'internships', label: '13. Internships' },
-                        { r: 'government_schemes', label: '14. Government Schemes' },
-                        { r: 'learning_hub', label: '15. Learning Hub' },
-                        { r: 'resume_builder', label: '16. Resume Builder' },
-                        { r: 'cover_letter', label: '17. Cover Letter' },
-                        { r: 'interview_coach', label: '18. Interview Coach' },
-                        { r: 'valor_ai', label: '19. ValorAI' },
-                        { r: 'applications', label: '20. Applications' },
-                        { r: 'saved_jobs', label: '21. Saved Jobs' },
-                        { r: 'messages', label: '22. Messages' },
-                        { r: 'notifications', label: '23. Notifications' },
-                        { r: 'profile_settings', label: '24. Profile Settings' },
-                        { r: 'privacy_center', label: '25. Privacy Center' },
-                      ].map(item => (
-                        <button
-                          key={item.r}
-                          onClick={() => handleNavClick(item.r as AppRoute)}
-                          className="w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800 hover:text-cyan-300"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                    {/* Portals List */}
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[11px] font-mono text-slate-400 uppercase font-semibold block mb-1">
+                          {t('Candidate & Veteran Centers')}
+                        </span>
+                        <div className="grid grid-cols-1 gap-1">
+                          {[
+                            { r: 'dashboard', label: 'Candidate Dashboard' },
+                            { r: 'service_profile', label: 'Service Profile & Translation' },
+                            { r: 'skill_translator', label: 'Military-to-Civilian Skills' },
+                            { r: 'career_matches', label: 'Career Matching' },
+                            { r: 'jobs', label: 'Corporate Jobs' },
+                            { r: 'internships', label: 'Paid Apprenticeships & Internships' },
+                            { r: 'government_schemes', label: 'Ex-Servicemen Schemes' },
+                            { r: 'learning_hub', label: 'Upskilling & Courses' },
+                            { r: 'resume_builder', label: 'Civilian Resume Builder' },
+                            { r: 'cover_letter', label: 'Cover Letter & Interview Coach' },
+                            { r: 'valor_ai', label: 'ValorAI Career Copilot' },
+                            { r: 'applications', label: 'Tracked Applications' },
+                            { r: 'saved_jobs', label: 'Bookmarked Opportunities' },
+                            { r: 'messages', label: 'Secure Employer Messages' },
+                            { r: 'notifications', label: 'Alerts & Updates' },
+                            { r: 'privacy_center', label: 'Privacy & Data Export' },
+                            { r: 'veteran_help_center', label: 'Help, FAQ & Scam Report' }
+                          ].map(item => (
+                            <button
+                              key={item.r}
+                              onClick={() => handleNavClick(item.r as AppRoute)}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800/80 hover:text-cyan-300 text-xs font-medium transition-colors"
+                            >
+                              {t(item.label)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
-                  {/* EMPLOYER */}
-                  <div className="mb-3">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold block mb-1">
-                      Employer Portal (26-33)
-                    </span>
-                    <div className="space-y-0.5">
-                      {[
-                        { r: 'employer_dashboard', label: '26. Employer Dashboard' },
-                        { r: 'company_profile', label: '27. Company Profile' },
-                        { r: 'create_job', label: '28. Create Job' },
-                        { r: 'manage_jobs', label: '29. Manage Jobs' },
-                        { r: 'candidate_search', label: '30. Candidate Search' },
-                        { r: 'employer_applications', label: '31. Employer Applications' },
-                        { r: 'employer_messages', label: '32. Employer Messages' },
-                        { r: 'employer_verification', label: '33. Verification Status' },
-                      ].map(item => (
-                        <button
-                          key={item.r}
-                          onClick={() => handleNavClick(item.r as AppRoute)}
-                          className="w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800 hover:text-cyan-300"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
+                      <div className="pt-2 border-t border-slate-800">
+                        <span className="text-[11px] font-mono text-slate-400 uppercase font-semibold block mb-1">
+                          {t('Employer & Admin')}
+                        </span>
+                        <div className="grid grid-cols-1 gap-1">
+                          <button
+                            onClick={() => handleNavClick('employer_dashboard')}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800/80 hover:text-cyan-300 text-xs font-medium"
+                          >
+                            {t('Employer Dashboard & Job Postings')}
+                          </button>
+                          <button
+                            onClick={() => handleNavClick('admin_dashboard')}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-amber-300 hover:bg-amber-950/40 text-xs font-medium"
+                          >
+                            {t('Platform Governance & Security Admin')}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* ADMIN */}
-                  <div>
-                    <span className="text-[10px] font-mono text-amber-400 uppercase font-semibold block mb-1">
-                      Admin Portal (34-42) - Protected
-                    </span>
-                    <div className="space-y-0.5">
-                      {[
-                        { r: 'admin_dashboard', label: '34. Admin Dashboard' },
-                        { r: 'user_management', label: '35. User Management' },
-                        { r: 'employer_verification_admin', label: '36. Employer Verification' },
-                        { r: 'job_verification', label: '37. Job Verification' },
-                        { r: 'scheme_management', label: '38. Scheme Management' },
-                        { r: 'reports', label: '39. Reports' },
-                        { r: 'audit_logs', label: '40. Audit Logs' },
-                        { r: 'content_management', label: '41. Content Management' },
-                        { r: 'system_health', label: '42. System Health' },
-                      ].map(item => (
-                        <button
-                          key={item.r}
-                          onClick={() => handleNavClick(item.r as AppRoute)}
-                          className="w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800 hover:text-amber-300"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Language Selector (11 languages) */}
-            <div className="relative">
+            {/* Language Selector (Instant dynamic translation) */}
+            <div className="relative" ref={langMenuRef}>
               <button
                 onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
-                className="p-2 rounded-lg bg-slate-900/80 border border-slate-700/70 text-slate-300 hover:text-white hover:border-cyan-500/40 flex items-center gap-1 text-xs"
-                title="Select Platform Language"
-                aria-label="Language selector"
+                className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:text-white hover:border-cyan-500/40 flex items-center gap-1.5 text-xs min-h-[40px] touch-manipulation font-semibold"
+                title={t('selectLanguage')}
+                aria-label={t('selectLanguage')}
               >
-                <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="uppercase font-mono font-semibold">{language}</span>
+                <Globe className="w-4 h-4 text-cyan-400" />
+                <span className="uppercase font-mono">{language}</span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
 
-              {isLanguageMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-xl bg-[#071326] border border-cyan-500/30 shadow-2xl p-2 z-50">
-                  <div className="px-2 py-1 text-[10px] font-mono text-slate-400 uppercase font-semibold border-b border-slate-800 mb-1">
-                    Select Language (11)
-                  </div>
-                  <div className="max-h-60 overflow-y-auto space-y-1">
-                    {SUPPORTED_LANGUAGES.map(lang => (
-                      <button
-                        key={lang.code}
-                        onClick={() => {
-                          setLanguage(lang.code);
-                          setIsLanguageMenuOpen(false);
-                        }}
-                        className={`w-full text-left px-2.5 py-1.5 rounded text-xs flex items-center justify-between transition-colors ${
-                          language === lang.code
-                            ? 'bg-cyan-500/20 text-cyan-300 font-semibold'
-                            : 'text-slate-300 hover:bg-slate-800'
-                        }`}
-                      >
-                        <span>{lang.name}</span>
-                        <span className="text-[11px] text-slate-400 font-normal">{lang.nativeName}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <AnimatePresence>
+                {isLanguageMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-52 rounded-2xl bg-[#071326] border border-cyan-500/40 shadow-2xl p-2 z-50"
+                  >
+                    <div className="px-2 py-1.5 text-[11px] font-mono text-cyan-400 uppercase font-semibold border-b border-slate-800 mb-1 flex items-center justify-between">
+                      <span>{t('selectLanguage')}</span>
+                      <span className="text-slate-400">{SUPPORTED_LANGUAGES.length}</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-0.5">
+                      {SUPPORTED_LANGUAGES.map(lang => (
+                        <button
+                          key={lang.code}
+                          onClick={() => {
+                            setLanguage(lang.code);
+                            setIsLanguageMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-colors min-h-[36px] ${
+                            language === lang.code
+                              ? 'bg-cyan-500/25 text-cyan-300 font-bold border border-cyan-500/30'
+                              : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                          }`}
+                        >
+                          <span>{lang.name}</span>
+                          <span className="text-[11px] text-slate-400 font-normal">{lang.nativeName}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Country Selector */}
-            <div className="hidden sm:flex items-center px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-700/70 text-xs text-slate-300 font-mono">
-              <span className="text-cyan-400 mr-1.5 font-bold">🇮🇳</span>
-              <span>{country}</span>
-            </div>
-
-            {/* Accessibility & Options Drawer */}
-            <div className="relative">
+            {/* Accessibility Drawer */}
+            <div className="relative" ref={settingsRef}>
               <button
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className="p-2 rounded-lg bg-slate-900/80 border border-slate-700/70 text-slate-300 hover:text-white hover:border-cyan-500/40 text-xs"
-                title="Accessibility & System Controls"
-                aria-label="Settings"
+                className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:text-white hover:border-cyan-500/40 text-xs min-h-[40px] touch-manipulation"
+                title={t('accessibilityControls')}
+                aria-label={t('accessibilityControls')}
               >
                 <Sliders className="w-4 h-4 text-cyan-400" />
               </button>
 
-              {isSettingsOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl bg-[#071326] border border-cyan-500/30 shadow-2xl p-3 z-50 text-xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2 font-mono text-cyan-400 font-semibold uppercase text-[11px]">
-                    <span>Accessibility Controls</span>
-                    <button onClick={() => setIsSettingsOpen(false)}>
-                      <X className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
-                    </button>
-                  </div>
+              <AnimatePresence>
+                {isSettingsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-72 rounded-2xl bg-[#071326] border border-cyan-500/40 shadow-2xl p-4 z-50 text-xs"
+                  >
+                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-800 mb-3 font-mono text-cyan-400 font-semibold uppercase text-xs">
+                      <span>{t('accessibilityControls')}</span>
+                      <button onClick={() => setIsSettingsOpen(false)}>
+                        <X className="w-4 h-4 text-slate-400 hover:text-white" />
+                      </button>
+                    </div>
 
-                  <div className="space-y-3">
-                    {/* Reduced Motion Toggle */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-300">Reduced Motion</span>
-                      <button
-                        onClick={() => setReducedMotion(!reducedMotion)}
-                        className={`w-9 h-5 rounded-full transition-colors relative ${
-                          reducedMotion ? 'bg-cyan-500' : 'bg-slate-800'
-                        }`}
-                      >
-                        <span
-                          className={`block w-4 h-4 rounded-full bg-white transition-transform ${
-                            reducedMotion ? 'translate-x-4' : 'translate-x-0.5'
+                    <div className="space-y-3.5">
+                      {/* Reduced Motion Toggle */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-200 font-medium">{t('reducedMotion')}</span>
+                        <button
+                          onClick={() => setReducedMotion(!reducedMotion)}
+                          className={`w-10 h-6 rounded-full transition-colors relative focus:outline-none ${
+                            reducedMotion ? 'bg-cyan-500' : 'bg-slate-800'
                           }`}
-                        />
-                      </button>
-                    </div>
+                        >
+                          <span
+                            className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                              reducedMotion ? 'translate-x-5' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
 
-                    {/* Text Size Scaling */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-300">Large Typography</span>
-                      <button
-                        onClick={() => setLargeText(!largeText)}
-                        className={`w-9 h-5 rounded-full transition-colors relative ${
-                          largeText ? 'bg-cyan-500' : 'bg-slate-800'
-                        }`}
-                      >
-                        <span
-                          className={`block w-4 h-4 rounded-full bg-white transition-transform ${
-                            largeText ? 'translate-x-4' : 'translate-x-0.5'
+                      {/* Text Size Scaling */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-200 font-medium">{t('largeTypography')}</span>
+                        <button
+                          onClick={() => setLargeText(!largeText)}
+                          className={`w-10 h-6 rounded-full transition-colors relative focus:outline-none ${
+                            largeText ? 'bg-cyan-500' : 'bg-slate-800'
                           }`}
-                        />
-                      </button>
-                    </div>
+                        >
+                          <span
+                            className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                              largeText ? 'translate-x-5' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
 
-                    {/* Loading Experience Replay */}
-                    <div className="pt-2 border-t border-slate-800">
-                      <button
-                        onClick={() => {
-                          setIsSettingsOpen(false);
-                          triggerLoadingSequence();
-                        }}
-                        className="w-full py-1.5 px-2 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 font-medium text-center"
-                      >
-                        Preview Brand Loading Intro
-                      </button>
-                    </div>
+                      {/* Loading Experience Replay */}
+                      <div className="pt-2 border-t border-slate-800 space-y-2">
+                        <button
+                          onClick={() => {
+                            setIsSettingsOpen(false);
+                            triggerLoadingSequence();
+                          }}
+                          className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-semibold text-center text-xs min-h-[36px]"
+                        >
+                          {t('previewIntro')}
+                        </button>
 
-                    {/* Onboarding Replay */}
-                    <div>
-                      <button
-                        onClick={() => {
-                          setIsSettingsOpen(false);
-                          setIsOnboardingOpen(true);
-                        }}
-                        className="w-full py-1.5 px-2 rounded bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 font-medium text-center hover:bg-cyan-900/50"
-                      >
-                        Relaunch Onboarding Setup
-                      </button>
+                        <button
+                          onClick={() => {
+                            setIsSettingsOpen(false);
+                            setIsOnboardingOpen(true);
+                          }}
+                          className="w-full py-2 px-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 font-semibold text-center hover:bg-cyan-900/50 text-xs min-h-[36px]"
+                        >
+                          {t('relaunchOnboarding')}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Notifications Bell */}
-            <div className="relative">
+            {/* Notifications Bell (Refined with toggle, click outside to close, and smooth motion animation) */}
+            <div className="relative" ref={notifContainerRef}>
               <button
-                onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="p-2 rounded-lg bg-slate-900/80 border border-slate-700/70 text-slate-300 hover:text-white hover:border-cyan-500/40 relative"
-                aria-label={`Notifications (${unreadNotifs} unread)`}
+                onClick={() => setIsNotifOpen(prev => !prev)}
+                className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:text-white hover:border-cyan-500/40 relative min-h-[40px] touch-manipulation"
+                aria-label={`${t('notifications')} (${unreadNotifs} ${t('unread')})`}
+                aria-expanded={isNotifOpen}
               >
                 <Bell className="w-4 h-4 text-cyan-400" />
                 {unreadNotifs > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-cyan-500 text-slate-950 text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-cyan-500 text-slate-950 text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
                     {unreadNotifs}
                   </span>
                 )}
               </button>
 
-              {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 rounded-xl bg-[#071326] border border-cyan-500/30 shadow-2xl p-3 z-50 text-xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
-                    <span className="font-mono text-cyan-400 font-bold uppercase text-[11px]">
-                      Notifications & Alerts
-                    </span>
-                    <button 
-                      onClick={() => handleNavClick('notifications')}
-                      className="text-[10px] text-slate-400 hover:text-cyan-300"
-                    >
-                      View All
-                    </button>
-                  </div>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {notifications.map(notif => (
-                      <div 
-                        key={notif.id}
-                        className={`p-2.5 rounded-lg border ${
-                          notif.read ? 'bg-slate-900/40 border-slate-800' : 'bg-cyan-950/30 border-cyan-500/30'
-                        }`}
-                      >
-                        <p className="font-semibold text-white">{notif.title}</p>
-                        <p className="text-slate-400 text-[11px] mt-0.5 leading-tight">{notif.message}</p>
-                        <span className="text-[10px] font-mono text-slate-400 mt-1 block">{notif.timestamp}</span>
+              <AnimatePresence>
+                {isNotifOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#071326] border border-cyan-500/40 shadow-2xl p-4 z-50 text-xs text-slate-200"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-800 mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-cyan-400" />
+                        <span className="font-mono text-cyan-400 font-bold uppercase text-xs">
+                          {t('notificationsAndAlerts')}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={clearNotifications}
+                          className="text-[11px] text-slate-400 hover:text-cyan-300 transition-colors"
+                        >
+                          {t('markAllAsRead')}
+                        </button>
+                        <button 
+                          onClick={() => handleNavClick('notifications')}
+                          className="text-xs font-semibold text-cyan-400 hover:underline"
+                        >
+                          {t('viewAll')}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Notifications list */}
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {notifications.length === 0 ? (
+                        <div className="py-8 text-center text-slate-400">
+                          <CheckCircle2 className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                          <p>{t('noNotifications')}</p>
+                        </div>
+                      ) : (
+                        notifications.map(notif => (
+                          <div 
+                            key={notif.id}
+                            className={`p-3 rounded-xl border transition-all ${
+                              notif.read ? 'bg-slate-900/40 border-slate-800' : 'bg-cyan-950/30 border-cyan-500/40 shadow-sm'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="font-semibold text-white text-xs">{notif.title}</p>
+                              {!notif.read && (
+                                <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0 mt-1" />
+                              )}
+                            </div>
+                            <p className="text-slate-300 text-xs mt-1 leading-relaxed">{notif.message}</p>
+                            <span className="text-[10px] font-mono text-slate-400 mt-1.5 block">{notif.timestamp}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Mobile Hamburger toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg bg-slate-900/80 border border-slate-700/70 text-slate-300 hover:text-white"
+              className="lg:hidden p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:text-white min-h-[40px] touch-manipulation"
               aria-label="Toggle mobile menu"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -490,70 +525,81 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Mobile Drawer Menu */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-800 bg-[#061022] p-4 max-h-[80vh] overflow-y-auto">
-          {/* Mobile Role Switcher */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-            <span className="text-xs font-mono text-slate-400 uppercase">Current Role:</span>
-            <div className="flex gap-1 text-xs">
-              {(['user', 'employer', 'admin'] as Role[]).map(r => (
-                <button
-                  key={r}
-                  onClick={() => {
-                    setCurrentRole(r);
-                    if (r === 'employer') setCurrentRoute('employer_dashboard');
-                    else if (r === 'admin') setCurrentRoute('admin_dashboard');
-                    else setCurrentRoute('dashboard');
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`px-2.5 py-1 rounded text-xs font-mono capitalize ${
-                    currentRole === r ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
-                  }`}
-                >
-                  {r === 'user' ? 'Veteran' : r}
-                </button>
-              ))}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="lg:hidden border-t border-slate-800 bg-[#061022] p-4 max-h-[82vh] overflow-y-auto"
+          >
+            {/* Mobile Role Switcher */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+              <span className="text-xs font-mono text-slate-400 uppercase">{t('role')}:</span>
+              <div className="flex gap-1.5 text-xs">
+                {(['user', 'employer', 'admin'] as Role[]).map(r => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setCurrentRole(r);
+                      if (r === 'employer') setCurrentRoute('employer_dashboard');
+                      else if (r === 'admin') setCurrentRoute('admin_dashboard');
+                      else setCurrentRoute('dashboard');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize min-h-[34px] ${
+                      currentRole === r ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    {r === 'user' ? t('veteran') : r === 'employer' ? t('employer') : t('admin')}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {navItems.map(item => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.route}
-                  onClick={() => handleNavClick(item.route)}
-                  className="flex items-center space-x-2 p-2.5 rounded-lg bg-slate-900/70 border border-slate-800 text-left text-xs font-medium text-slate-200 hover:border-cyan-500/40"
-                >
-                  <Icon className="w-4 h-4 text-cyan-400" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+            {/* Mobile Nav items grid */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {navItems.map(item => {
+                const Icon = item.icon;
+                const label = t(item.labelKey) || item.defaultLabel;
+                return (
+                  <button
+                    key={item.route}
+                    onClick={() => handleNavClick(item.route)}
+                    className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-left text-xs font-semibold text-slate-200 hover:border-cyan-500/40 min-h-[44px]"
+                  >
+                    <Icon className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-          <div className="pt-2 border-t border-slate-800 flex gap-2">
-            <button
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                setIsOnboardingOpen(true);
-              }}
-              className="flex-1 py-2 rounded-lg bg-cyan-500 text-slate-950 text-xs font-bold text-center"
-            >
-              Start Onboarding
-            </button>
-            <button
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                handleNavClick('privacy_center');
-              }}
-              className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-medium text-center border border-slate-700"
-            >
-              Privacy Center
-            </button>
-          </div>
-        </div>
-      )}
+            {/* Mobile Quick Actions */}
+            <div className="pt-2 border-t border-slate-800 flex gap-2">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsOnboardingOpen(true);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-cyan-500 text-slate-950 text-xs font-bold text-center min-h-[44px]"
+              >
+                {t('relaunchOnboarding')}
+              </button>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsAuthModalOpen(true);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-200 text-xs font-semibold text-center border border-slate-700 min-h-[44px]"
+              >
+                {t('securitySettings')}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };

@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Check, ArrowRight, ArrowLeft, ShieldCheck, MapPin, Target, Building2, Briefcase } from 'lucide-react';
+import { 
+  X, 
+  Check, 
+  ArrowRight, 
+  ArrowLeft, 
+  ShieldCheck, 
+  MapPin, 
+  Target, 
+  Building2, 
+  Briefcase 
+} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserType, CareerGoal } from '../../types';
 import { SecurityNoticeBanner } from '../common/SecurityNoticeBanner';
+import { ConsentPrivacyScreen } from '../common/ConsentPrivacyScreen';
 
 interface OnboardingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 const INDIAN_STATES = [
@@ -43,8 +54,32 @@ const INDUSTRIES_LIST = [
   'Entrepreneurship & Micro-business'
 ];
 
-export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) => {
-  const { profile, updateProfile, setCurrentRoute } = useApp();
+const STEP_TITLES = [
+  'Consent & Privacy Agreement',
+  'Service Identity Alignment',
+  'Primary Career Objective',
+  'Geographic Preference',
+  'Target Civilian Industries'
+];
+
+export const OnboardingModal: React.FC<OnboardingModalProps> = ({ 
+  isOpen: propIsOpen, 
+  onClose: propOnClose 
+}) => {
+  const { 
+    profile, 
+    updateProfile, 
+    setCurrentRoute, 
+    isOnboardingOpen, 
+    setIsOnboardingOpen,
+    hasConsentedToPrivacy,
+    setHasConsentedToPrivacy,
+    t
+  } = useApp();
+
+  const isOpen = propIsOpen !== undefined ? propIsOpen : isOnboardingOpen;
+  const onClose = propOnClose || (() => setIsOnboardingOpen(false));
+
   const [step, setStep] = useState<number>(1);
 
   const [selectedUserType, setSelectedUserType] = useState<UserType>(profile.userType || 'veteran');
@@ -73,8 +108,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
       state,
       city,
       preferredIndustries: selectedIndustries,
-      profileCompleted: true
+      profileCompleted: true,
+      hasConsentedToPrivacy: true,
+      consentTimestamp: new Date().toISOString()
     });
+    setHasConsentedToPrivacy(true);
     onClose();
     setCurrentRoute('dashboard');
   };
@@ -100,16 +138,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <h2 id="onboarding-title" className="text-lg font-bold text-white font-display">
-                ValorBadge Onboarding
+                {t('ValorBadge Profile Creation')}
               </h2>
               <p className="text-xs text-slate-400">
-                Step {step} of 4: Rapid Career Profile Alignment
+                {t('Step')} {step} {t('of')} 5: {t(STEP_TITLES[step - 1])}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close onboarding"
+            aria-label={t('close')}
             className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -120,27 +158,41 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
         <div className="w-full bg-slate-900 h-1.5 flex">
           <div 
             className="bg-cyan-500 h-full transition-all duration-300"
-            style={{ width: `${(step / 4) * 100}%` }}
+            style={{ width: `${(step / 5) * 100}%` }}
           />
         </div>
 
-        {/* Security Warning Banner in Onboarding */}
-        <div className="px-6 pt-4">
-          <SecurityNoticeBanner compact />
-        </div>
+        {/* Security Warning Banner in Onboarding (for steps 2-5) */}
+        {step > 1 && (
+          <div className="px-6 pt-4">
+            <SecurityNoticeBanner compact />
+          </div>
+        )}
 
         {/* Step Content */}
-        <div className="p-6 flex-1 overflow-y-auto max-h-[60vh]">
-          {/* STEP 1: Who are you? */}
+        <div className="p-6 flex-1 overflow-y-auto max-h-[65vh]">
+          {/* STEP 1: CONSENT & PRIVACY SCREEN BEFORE PROFILE CREATION */}
           {step === 1 && (
+            <div className="space-y-4">
+              <ConsentPrivacyScreen
+                onContinue={() => setStep(2)}
+                onCancel={onClose}
+                title={t('Consent & Privacy Agreement')}
+                subtitle={t('Please review our data minimization framework and defense security directives before creating your career profile.')}
+              />
+            </div>
+          )}
+
+          {/* STEP 2: Who are you? (Service Identity) */}
+          {step === 2 && (
             <div className="space-y-4">
               <div className="flex items-center space-x-2 text-sm text-cyan-400 font-mono">
                 <ShieldCheck className="w-4 h-4" />
-                <span>STEP 1: SERVICE IDENTITY</span>
+                <span>{t('STEP 2: SERVICE IDENTITY')}</span>
               </div>
-              <h3 className="text-xl font-bold text-white">Who are you?</h3>
+              <h3 className="text-xl font-bold text-white">{t('Who are you?')}</h3>
               <p className="text-xs text-slate-400">
-                Select your service background to calibrate civilian equivalence frameworks and scheme eligibility.
+                {t('Select your service background to calibrate civilian equivalence frameworks and scheme eligibility.')}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -178,14 +230,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-bold text-white">{opt.title}</span>
+                        <span className="text-sm font-bold text-white">{t(opt.title)}</span>
                         {selectedUserType === opt.id && (
                           <span className="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-xs">
                             <Check className="w-3.5 h-3.5" />
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400">{opt.desc}</p>
+                      <p className="text-xs text-slate-400">{t(opt.desc)}</p>
                     </div>
                   </button>
                 ))}
@@ -193,16 +245,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
             </div>
           )}
 
-          {/* STEP 2: Career Goal */}
-          {step === 2 && (
+          {/* STEP 3: Career Goal */}
+          {step === 3 && (
             <div className="space-y-4">
               <div className="flex items-center space-x-2 text-sm text-cyan-400 font-mono">
                 <Target className="w-4 h-4" />
-                <span>STEP 2: PRIMARY OBJECTIVE</span>
+                <span>{t('STEP 3: PRIMARY OBJECTIVE')}</span>
               </div>
-              <h3 className="text-xl font-bold text-white">What is your primary career goal?</h3>
+              <h3 className="text-xl font-bold text-white">{t('What is your primary career goal?')}</h3>
               <p className="text-xs text-slate-400">
-                ValorBadge tailors matching algorithms, course recommendations, and resume formats to this goal.
+                {t('ValorBadge tailors matching algorithms, course recommendations, and resume formats to this goal.')}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -226,14 +278,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-bold text-white">{opt.title}</span>
+                        <span className="text-sm font-bold text-white">{t(opt.title)}</span>
                         {selectedGoal === opt.id && (
                           <span className="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-xs">
                             <Check className="w-3.5 h-3.5" />
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400">{opt.desc}</p>
+                      <p className="text-xs text-slate-400">{t(opt.desc)}</p>
                     </div>
                   </button>
                 ))}
@@ -241,38 +293,38 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
             </div>
           )}
 
-          {/* STEP 3: Location */}
-          {step === 3 && (
+          {/* STEP 4: Location */}
+          {step === 4 && (
             <div className="space-y-4">
               <div className="flex items-center space-x-2 text-sm text-cyan-400 font-mono">
                 <MapPin className="w-4 h-4" />
-                <span>STEP 3: GEOGRAPHIC PREFERENCE</span>
+                <span>{t('STEP 4: GEOGRAPHIC PREFERENCE')}</span>
               </div>
-              <h3 className="text-xl font-bold text-white">Where are you located or looking to work?</h3>
+              <h3 className="text-xl font-bold text-white">{t('Where are you located or looking to work?')}</h3>
               <p className="text-xs text-slate-400">
-                Job matching, state-level welfare schemes, and Zila Sainik boards are anchored by geographic region.
+                {t('Job matching, state-level welfare schemes, and Zila Sainik boards are anchored by geographic region.')}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase font-mono">
-                    Country
+                    {t('Country')}
                   </label>
                   <select
                     value={country}
                     onChange={e => setCountry(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                   >
-                    <option value="India">India</option>
-                    <option value="United States">United States (Extensible)</option>
-                    <option value="United Kingdom">United Kingdom (Extensible)</option>
-                    <option value="Australia">Australia (Extensible)</option>
+                    <option value="India">{t('India')}</option>
+                    <option value="United States">{t('United States')} (Extensible)</option>
+                    <option value="United Kingdom">{t('United Kingdom')} (Extensible)</option>
+                    <option value="Australia">{t('Australia')} (Extensible)</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase font-mono">
-                    State / Region
+                    {t('State / Region')}
                   </label>
                   <select
                     value={state}
@@ -280,41 +332,41 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                   >
                     {INDIAN_STATES.map(st => (
-                      <option key={st} value={st}>{st}</option>
+                      <option key={st} value={st}>{t(st)}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase font-mono">
-                    City
+                    {t('City')}
                   </label>
                   <input
                     type="text"
                     value={city}
                     onChange={e => setCity(e.target.value)}
-                    placeholder="e.g. Bengaluru, Pune, Delhi"
+                    placeholder={t('e.g. Bengaluru, Pune, Delhi')}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none placeholder:text-slate-500"
                   />
                 </div>
               </div>
 
               <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-xs text-slate-400 mt-4">
-                <strong>Regional Scheme Filter:</strong> Setting your state ensures you are notified of both Central Ministry schemes and State Sainik Welfare Department financial provisions.
+                <strong>{t('Regional Scheme Filter:')}</strong> {t('Setting your state ensures you are notified of both Central Ministry schemes and State Sainik Welfare Department financial provisions.')}
               </div>
             </div>
           )}
 
-          {/* STEP 4: Preferred Industries */}
-          {step === 4 && (
+          {/* STEP 5: Preferred Industries */}
+          {step === 5 && (
             <div className="space-y-4">
               <div className="flex items-center space-x-2 text-sm text-cyan-400 font-mono">
                 <Building2 className="w-4 h-4" />
-                <span>STEP 4: TARGET INDUSTRIES</span>
+                <span>{t('STEP 5: TARGET INDUSTRIES')}</span>
               </div>
-              <h3 className="text-xl font-bold text-white">Preferred Civilian Industries</h3>
+              <h3 className="text-xl font-bold text-white">{t('Preferred Civilian Industries')}</h3>
               <p className="text-xs text-slate-400">
-                Select one or more industries you are interested in exploring. You can update this at any time in Profile Settings.
+                {t('Select one or more industries you are interested in exploring. You can update this at any time in Profile Settings.')}
               </p>
 
               <div className="flex flex-wrap gap-2 pt-2">
@@ -332,54 +384,52 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                       }`}
                     >
                       {isSelected ? <Check className="w-3.5 h-3.5" /> : <Briefcase className="w-3.5 h-3.5 text-slate-500" />}
-                      <span>{ind}</span>
+                      <span>{t(ind)}</span>
                     </button>
                   );
                 })}
               </div>
 
               <div className="mt-4 p-3 rounded-lg bg-cyan-950/20 border border-cyan-500/20 text-xs text-cyan-300/90">
-                Selected {selectedIndustries.length} industries. Our ontology engine will highlight military transferable skills specific to these sectors.
+                {t('Selected')} {selectedIndustries.length} {t('industries. Our ontology engine will highlight military transferable skills specific to these sectors.')}
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer actions */}
-        <div className="p-6 border-t border-slate-800 flex items-center justify-between bg-slate-900/60">
-          {step > 1 ? (
+        {/* Footer actions for steps 2 to 5 (Step 1 controls are inside ConsentPrivacyScreen) */}
+        {step > 1 && (
+          <div className="p-6 border-t border-slate-800 flex items-center justify-between bg-slate-900/60">
             <button
               type="button"
               onClick={() => setStep(prev => prev - 1)}
               className="px-4 py-2.5 rounded-xl border border-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors flex items-center space-x-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Previous</span>
+              <span>{t('Previous')}</span>
             </button>
-          ) : (
-            <div />
-          )}
 
-          {step < 4 ? (
-            <button
-              type="button"
-              onClick={() => setStep(prev => prev + 1)}
-              className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-sm font-bold transition-colors flex items-center space-x-2 shadow-lg shadow-cyan-500/20"
-            >
-              <span>Continue</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleFinish}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 text-sm font-bold transition-all flex items-center space-x-2 shadow-lg shadow-cyan-500/30"
-            >
-              <span>Complete Setup & View Dashboard</span>
-              <Check className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+            {step < 5 ? (
+              <button
+                type="button"
+                onClick={() => setStep(prev => prev + 1)}
+                className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-sm font-bold transition-colors flex items-center space-x-2 shadow-lg shadow-cyan-500/20"
+              >
+                <span>{t('Continue')}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleFinish}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 text-sm font-bold transition-all flex items-center space-x-2 shadow-lg shadow-cyan-500/30"
+              >
+                <span>{t('Complete Setup & View Dashboard')}</span>
+                <Check className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
       </motion.div>
     </div>
   );

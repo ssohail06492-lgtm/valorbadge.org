@@ -38,7 +38,7 @@ export const StateDisplay: React.FC<StateDisplayProps> = ({
   compact = false,
   className = ''
 }) => {
-  const { reducedMotion } = useApp();
+  const { reducedMotion, t } = useApp();
 
   // Preset definitions based on state type
   const configs = {
@@ -78,8 +78,10 @@ export const StateDisplay: React.FC<StateDisplayProps> = ({
 
   const config = configs[type];
   const IconComponent = CustomIcon || config.icon;
-  const displayTitle = title || config.defaultTitle;
-  const displayMessage = message || config.defaultMessage;
+  const rawTitle = title || config.defaultTitle;
+  const rawMessage = message || config.defaultMessage;
+  const displayTitle = t(rawTitle);
+  const displayMessage = t(rawMessage);
 
   return (
     <div 
@@ -130,7 +132,7 @@ export const StateDisplay: React.FC<StateDisplayProps> = ({
       {/* State Badge */}
       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold border mb-2 ${config.badgeColor}`}>
         <ShieldCheck className="w-3 h-3" />
-        {type} state
+        {t(type)} {t('State')}
       </span>
 
       {/* Title */}
@@ -152,7 +154,7 @@ export const StateDisplay: React.FC<StateDisplayProps> = ({
               className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 touch-manipulation"
             >
               {type === 'error' ? <RefreshCw className="w-4 h-4" /> : null}
-              <span>{actionLabel}</span>
+              <span>{t(actionLabel)}</span>
               {type !== 'error' ? <ArrowRight className="w-3.5 h-3.5" /> : null}
             </button>
           )}
@@ -162,7 +164,7 @@ export const StateDisplay: React.FC<StateDisplayProps> = ({
               onClick={onSecondaryAction}
               className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/80 font-semibold text-xs active:scale-95 transition-all flex items-center justify-center touch-manipulation"
             >
-              {secondaryLabel}
+              {t(secondaryLabel)}
             </button>
           )}
         </div>

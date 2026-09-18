@@ -25,6 +25,12 @@ import {
 import { useApp } from '../../../context/AppContext';
 import { SecurityNoticeBanner } from '../../common/SecurityNoticeBanner';
 import { AppRoute } from '../../../types';
+import { 
+  sanitizeInput, 
+  validateRequired, 
+  checkRateLimit, 
+  screenClassifiedInfo 
+} from '../../../lib/security';
 
 interface TransitionProblemCard {
   id: string;
@@ -41,7 +47,7 @@ interface TransitionProblemCard {
 }
 
 export const VeteranHelpCenterView: React.FC = () => {
-  const { setCurrentRoute } = useApp();
+  const { setCurrentRoute, reportJobScam, t } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [scamFeeChecked, setScamFeeChecked] = useState(false);
@@ -51,6 +57,58 @@ export const VeteranHelpCenterView: React.FC = () => {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [reportNote, setReportNote] = useState('');
+  const [scamCompanyName, setScamCompanyName] = useState('');
+  const [scamContact, setScamContact] = useState('');
+  const [scamError, setScamError] = useState<string | null>(null);
+
+  const handleReportScam = (e: React.FormEvent) => {
+    e.preventDefault();
+    setScamError(null);
+
+    // 1. Rate limiting
+    const rate = checkRateLimit('scam_report_submission', 5, 60000);
+    if (!rate.allowed) {
+      setScamError(`Rate limit reached. Please wait ${rate.retryAfterSeconds}s before submitting again.`);
+      return;
+    }
+
+    // 2. Validate required
+    const companyVal = validateRequired(scamCompanyName, 'Company Name', 2, 100);
+    if (!companyVal.isValid) {
+      setScamError(companyVal.error || 'Please enter valid company name');
+      return;
+    }
+
+    // 3. Sanitize inputs
+    const cleanCompany = sanitizeInput(scamCompanyName);
+    const cleanContact = sanitizeInput(scamContact);
+    const cleanNote = sanitizeInput(reportNote);
+
+    // 4. Classified data screening
+    const screen = screenClassifiedInfo(cleanNote);
+    if (!screen.isClean) {
+      setScamError(screen.warningMessage || 'Tactical keywords detected. Please remove operational terminology.');
+      return;
+    }
+
+    reportJobScam({
+      jobId: `report-${Date.now()}`,
+      jobTitle: `Suspicious Recruiter: ${cleanCompany}`,
+      company: cleanCompany,
+      reason: 'misleading_terms',
+      details: `${cleanNote} | Contact: ${cleanContact}`
+    });
+
+    setReportSuccess(true);
+    setTimeout(() => {
+      setReportSuccess(false);
+      setReportModalOpen(false);
+      setScamCompanyName('');
+      setScamContact('');
+      setReportNote('');
+      setScamError(null);
+    }, 2200);
+  };
 
   const problemCards: TransitionProblemCard[] = [
     {
@@ -226,16 +284,6 @@ export const VeteranHelpCenterView: React.FC = () => {
       p.solution.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
-
-  const handleReportScam = (e: React.FormEvent) => {
-    e.preventDefault();
-    setReportSuccess(true);
-    setTimeout(() => {
-      setReportSuccess(false);
-      setReportModalOpen(false);
-      setReportNote('');
-    }, 2500);
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -544,16 +592,25 @@ export const VeteranHelpCenterView: React.FC = () => {
 
             {reportSuccess ? (
               <div className="p-4 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                 <span>Thank you! Your report has been logged and our verification team will investigate this employer.</span>
               </div>
             ) : (
               <form onSubmit={handleReportScam} className="space-y-4 text-xs">
+                {scamError && (
+                  <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                    <span>{scamError}</span>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-slate-300 font-mono mb-1">Company / Agent Name</label>
                   <input
                     type="text"
                     required
+                    value={scamCompanyName}
+                    onChange={e => setScamCompanyName(e.target.value)}
                     placeholder="e.g. Apex Defense Placement Services"
                     className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:border-cyan-400 focus:outline-none"
                   />
@@ -564,6 +621,8 @@ export const VeteranHelpCenterView: React.FC = () => {
                   <input
                     type="text"
                     required
+                    value={scamContact}
+                    onChange={e => setScamContact(e.target.value)}
                     placeholder="+91 ... or email address"
                     className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:border-cyan-400 focus:outline-none"
                   />

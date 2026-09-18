@@ -12,6 +12,8 @@ import {
   CompanyProfile
 } from '../types';
 import { DEMO_APPLICATIONS, DEMO_JOBS, DEMO_COMPANIES } from '../lib/demoData';
+import { translate } from '../lib/i18n';
+import { AuthSession, getStoredAuthSession, saveAuthSession, clearAuthSession } from '../lib/security';
 
 interface NotificationItem {
   id: string;
@@ -89,9 +91,19 @@ interface AppContextType {
   resetAllData: () => void;
   adminErrorAlert: string | null;
   setAdminErrorAlert: (msg: string | null) => void;
+  t: (keyOrText: string) => string;
+  authSession: AuthSession;
+  login: (role: Role, email?: string, name?: string) => void;
+  logout: () => void;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (val: boolean) => void;
+  isSecuritySettingsOpen: boolean;
+  setIsSecuritySettingsOpen: (val: boolean) => void;
+  hasConsentedToPrivacy: boolean;
+  setHasConsentedToPrivacy: (val: boolean) => void;
 }
 
-const DEFAULT_PROFILE: ServiceProfileData = {
+export const DEFAULT_PROFILE: ServiceProfileData = {
   id: 'usr_mock_001',
   // 1. Basic Civilian Information
   fullName: 'Rajesh K. Verma',
@@ -221,12 +233,14 @@ const DEFAULT_PROFILE: ServiceProfileData = {
   visibility: 'employers',
   allowAiEnhancement: true,
   profileCompleted: true,
+  hasConsentedToPrivacy: true,
+  consentTimestamp: '2026-03-12T10:00:00.000Z',
   lastUpdated: '2026-03-12',
   isDemoData: true,
   isManualEntry: false
 };
 
-const EMPTY_MANUAL_PROFILE: ServiceProfileData = {
+export const EMPTY_MANUAL_PROFILE: ServiceProfileData = {
   id: 'usr_manual_entry',
   fullName: '',
   email: '',
@@ -279,6 +293,7 @@ const EMPTY_MANUAL_PROFILE: ServiceProfileData = {
   visibility: 'private',
   allowAiEnhancement: false,
   profileCompleted: false,
+  hasConsentedToPrivacy: false,
   lastUpdated: new Date().toISOString().split('T')[0],
   isDemoData: false,
   isManualEntry: true
@@ -408,7 +423,15 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentRoute, setCurrentRouteState] = useState<AppRoute>('landing');
   const [currentRole, setCurrentRole] = useState<Role>('user');
-  const [language, setLanguageState] = useState<SupportedLanguage>('en');
+  const [language, setLanguageState] = useState<SupportedLanguage>(() => {
+    try {
+      const savedLang = localStorage.getItem('valorbadge_lang') as SupportedLanguage;
+      if (savedLang) return savedLang;
+    } catch {
+      // ignore
+    }
+    return 'en';
+  });
   const [country, setCountry] = useState<SupportedCountry>('IN');
   const [savedJobIds, setSavedJobIds] = useState<string[]>(['demo-job-1', 'demo-job-3']);
   const [applications, setApplications] = useState<ApplicationRecord[]>(DEMO_APPLICATIONS);
@@ -423,6 +446,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [messages, setMessages] = useState<MessageThread[]>(INITIAL_MESSAGES);
   const [adminErrorAlert, setAdminErrorAlert] = useState<string | null>(null);
+
+  // Auth & Security state
+  const [authSession, setAuthSession] = useState<AuthSession>(() => getStoredAuthSession());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isSecuritySettingsOpen, setIsSecuritySettingsOpen] = useState<boolean>(false);
+
+  // Consent & Privacy state
+  const [hasConsentedToPrivacy, setHasConsentedToPrivacyState] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('valorbadge_privacy_consent');
+      if (stored !== null) return stored === 'true';
+    } catch {
+      // ignore
+    }
+    return true; // default demo is consented
+  });
+
+  const setHasConsentedToPrivacy = (val: boolean) => {
+    setHasConsentedToPrivacyState(val);
+    try {
+      localStorage.setItem('valorbadge_privacy_consent', String(val));
+    } catch {
+      // ignore
+    }
+    if (val) {
+      updateProfile({ hasConsentedToPrivacy: true, consentTimestamp: new Date().toISOString() });
+    }
+  };
+
+  const t = (keyOrText: string) => translate(keyOrText, language);
+
+  const login = (role: Role, email = 'rajesh.sharma@example.com', name = 'Subedar Rajesh Sharma (Retd.)') => {
+    const newSession: AuthSession = {
+      isAuthenticated: true,
+      role,
+      userEmail: email,
+      userName: name,
+      sessionExpiry: Date.now() + 24 * 60 * 60 * 1000
+    };
+    saveAuthSession(newSession);
+    setAuthSession(newSession);
+    setCurrentRole(role);
+  };
+
+  const logout = () => {
+    clearAuthSession();
+    setAuthSession({
+      isAuthenticated: false,
+      role: 'user',
+      userEmail: '',
+      userName: '',
+      sessionExpiry: 0
+    });
+    setCurrentRole('user');
+    setCurrentRouteState('landing');
+  };
 
   const [profile, setProfile] = useState<ServiceProfileData>(() => {
     try {
@@ -455,6 +534,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setLanguage = (lang: SupportedLanguage) => {
     setLanguageState(lang);
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = lang;
+    }
     try {
       localStorage.setItem('valorbadge_lang', lang);
     } catch {
@@ -477,11 +559,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetProfileToManual = () => {
     const cleanProfile: ServiceProfileData = {
       ...EMPTY_MANUAL_PROFILE,
-      id: `usr_${Date.now()}`
+      id: `usr_${Date.now()}`,
+      hasConsentedToPrivacy: false
     };
     setProfile(cleanProfile);
+    setHasConsentedToPrivacyState(false);
     try {
       localStorage.setItem('valorbadge_profile', JSON.stringify(cleanProfile));
+      localStorage.removeItem('valorbadge_privacy_consent');
     } catch {
       // ignore
     }
@@ -489,8 +574,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loadDemoProfile = () => {
     setProfile(DEFAULT_PROFILE);
+    setHasConsentedToPrivacyState(true);
     try {
       localStorage.setItem('valorbadge_profile', JSON.stringify(DEFAULT_PROFILE));
+      localStorage.setItem('valorbadge_privacy_consent', 'true');
     } catch {
       // ignore
     }
@@ -767,6 +854,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('valorbadge_saved_jobs');
     localStorage.removeItem('valorbadge_alerts');
     localStorage.removeItem('valorbadge_reports');
+    localStorage.removeItem('valorbadge_privacy_consent');
+    setHasConsentedToPrivacyState(false);
     setProfile({
       ...DEFAULT_PROFILE,
       fullName: '',
@@ -879,7 +968,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteAccountData,
         resetAllData: deleteAccountData,
         adminErrorAlert,
-        setAdminErrorAlert
+        setAdminErrorAlert,
+        t,
+        authSession,
+        login,
+        logout,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        isSecuritySettingsOpen,
+        setIsSecuritySettingsOpen,
+        hasConsentedToPrivacy,
+        setHasConsentedToPrivacy
       }}
     >
       {children}

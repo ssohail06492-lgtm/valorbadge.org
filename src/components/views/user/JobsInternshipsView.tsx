@@ -33,6 +33,12 @@ import { useApp } from '../../../context/AppContext';
 import { DemoDataBadge } from '../../common/DemoDataBadge';
 import { SecurityNoticeBanner } from '../../common/SecurityNoticeBanner';
 import { JobOpportunity, JobAlert } from '../../../types';
+import { 
+  sanitizeInput, 
+  validateRequired, 
+  checkRateLimit, 
+  screenClassifiedInfo 
+} from '../../../lib/security';
 
 interface JobsInternshipsViewProps {
   initialType?: 'all' | 'internship' | 'full-time' | 'apprenticeship';
@@ -50,7 +56,8 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
     toggleJobAlert,
     deleteJobAlert,
     reportJobScam,
-    setCurrentRoute
+    setCurrentRoute,
+    t
   } = useApp();
 
   // Search & Filters state
@@ -215,13 +222,28 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
     e.preventDefault();
     if (!selectedJobForApply) return;
 
+    // Rate limit check
+    const rateCheck = checkRateLimit('job_application', 10, 60000);
+    if (!rateCheck.allowed) {
+      alert(`Application rate limit exceeded. Please wait ${rateCheck.retryAfterSeconds} seconds.`);
+      return;
+    }
+
+    // Sanitize notes and check classified screening
+    const sanitizedNotes = sanitizeInput(applyNotes);
+    const screen = screenClassifiedInfo(sanitizedNotes);
+    if (!screen.isClean) {
+      alert(screen.warningMessage || 'Tactical or classified operational phrasing detected. Please remove sensitive terms.');
+      return;
+    }
+
     submitApplicationWithConsent(
       selectedJobForApply.id,
       selectedJobForApply.title,
       selectedJobForApply.company,
       consentChecked,
       selectedResume,
-      applyNotes || 'Submitted through ValorBadge verified career pipeline with candidate privacy consent.'
+      sanitizedNotes || 'Submitted through ValorBadge verified career pipeline with candidate privacy consent.'
     );
 
     setAppliedNotification(selectedJobForApply.title);
@@ -241,12 +263,22 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
     e.preventDefault();
     if (!selectedJobForReport) return;
 
+    // Rate limit check
+    const rateCheck = checkRateLimit('scam_report', 5, 60000);
+    if (!rateCheck.allowed) {
+      alert(`Rate limit reached. Please wait ${rateCheck.retryAfterSeconds} seconds.`);
+      return;
+    }
+
+    // Sanitize details
+    const sanitizedDetails = sanitizeInput(scamDetails);
+
     reportJobScam({
       jobId: selectedJobForReport.id,
       jobTitle: selectedJobForReport.title,
       company: selectedJobForReport.company,
       reason: scamReason,
-      details: scamDetails || 'Candidate reported suspicious recruitment terms.'
+      details: sanitizedDetails || 'Candidate reported suspicious recruitment terms.'
     });
 
     setReportSuccess(true);
@@ -261,9 +293,12 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
     e.preventDefault();
     if (!newAlertTitle || !newAlertKeywords) return;
 
+    const sanitizedTitle = sanitizeInput(newAlertTitle);
+    const sanitizedKeywords = sanitizeInput(newAlertKeywords);
+
     createJobAlert({
-      title: newAlertTitle,
-      roleKeywords: newAlertKeywords,
+      title: sanitizedTitle,
+      roleKeywords: sanitizedKeywords,
       location: newAlertLocation,
       industry: selectedIndustry !== 'all' ? selectedIndustry : 'All Industries',
       opportunityType: selectedType !== 'all' ? selectedType : 'All',
@@ -289,19 +324,19 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-semibold flex items-center gap-1.5">
               <Briefcase className="w-3.5 h-3.5" />
-              <span>EMPLOYMENT & INTERNSHIPS DISCOVERY</span>
+              <span>{t('EMPLOYMENT & INTERNSHIPS DISCOVERY')}</span>
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/20">
-              Government + Private Opportunities
+              {t('Government + Private Opportunities')}
             </span>
             <DemoDataBadge />
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-display">
-            Jobs, Internships & Apprenticeships
+            {t('Jobs, Internships & Apprenticeships')}
           </h1>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-            Vetted vacancies from accredited corporates and public sector undertakings specifically seeking armed forces veterans and Agniveer cohorts.
+            {t('Vetted vacancies from accredited corporates and public sector undertakings specifically seeking armed forces veterans and Agniveer cohorts.')}
           </p>
         </div>
 
@@ -312,7 +347,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-cyan-300 flex items-center gap-1.5 transition-colors shadow-sm"
           >
             <Bell className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Job Alerts ({jobAlerts.filter(a => a.isActive).length})</span>
+            <span>{t('Job Alerts')} ({jobAlerts.filter(a => a.isActive).length})</span>
           </button>
 
           <button
@@ -320,7 +355,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-1.5"
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>Application Tracker ({applications.length})</span>
+            <span>{t('Application Tracker')} ({applications.length})</span>
           </button>
         </div>
       </div>
@@ -332,14 +367,14 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
               <span className="font-bold text-white font-mono uppercase tracking-wider text-[11px]">
-                ValorBadge Trust & Safety Charter
+                {t('ValorBadge Trust & Safety Charter')}
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/30">
-                Zero-Fee Guarantee
+                {t('Zero-Fee Guarantee')}
               </span>
             </div>
             <p className="text-slate-400 text-[11px] leading-relaxed">
-              Never pay any registration fee, interview hall pass charge, or uniform deposit. Genuine employers and PSUs never ask candidates for money. ValorBadge does not guarantee employment or compensation.
+              {t('Never pay any registration fee, interview hall pass charge, or uniform deposit. Genuine employers and PSUs never ask candidates for money. ValorBadge does not guarantee employment or compensation.')}
             </p>
           </div>
         </div>
@@ -348,7 +383,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
           onClick={() => setCurrentRoute('veteran_help_center')}
           className="text-cyan-400 hover:text-cyan-300 font-mono text-[11px] flex items-center gap-1 shrink-0 underline decoration-cyan-500/50 underline-offset-4"
         >
-          <span>Scam Defense Guide</span>
+          <span>{t('Scam Defense Guide')}</span>
           <ExternalLink className="w-3 h-3" />
         </button>
       </div>
@@ -384,7 +419,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Search title, company, skills, or city..."
+              placeholder={t('Search by job title, skills, or company...')}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
             />
           </div>
@@ -392,19 +427,19 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
           {/* Type Segment Control */}
           <div className="md:col-span-5 flex rounded-xl bg-slate-900 p-1 border border-slate-700 text-xs font-mono overflow-x-auto">
             {[
-              { id: 'all', label: 'All' },
-              { id: 'full-time', label: 'Jobs' },
-              { id: 'internship', label: 'Internships' },
-              { id: 'apprenticeship', label: 'Apprenticeships' }
-            ].map(t => (
+              { id: 'all', label: t('all') },
+              { id: 'full-time', label: t('jobs') },
+              { id: 'internship', label: t('internships') },
+              { id: 'apprenticeship', label: t('apprenticeships') }
+            ].map(tItem => (
               <button
-                key={t.id}
-                onClick={() => setSelectedType(t.id)}
+                key={tItem.id}
+                onClick={() => setSelectedType(tItem.id)}
                 className={`px-3 py-1 rounded-lg transition-colors font-semibold shrink-0 ${
-                  selectedType === t.id ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+                  selectedType === tItem.id ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                {t.label}
+                {tItem.label}
               </button>
             ))}
           </div>
@@ -416,10 +451,10 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               onChange={e => setSelectedSector(e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-cyan-400 focus:outline-none capitalize"
             >
-              <option value="all">All Sectors (Govt + Private)</option>
-              <option value="government">Government Only</option>
-              <option value="psu">PSU (Public Sector Undertaking)</option>
-              <option value="private">Private Industry</option>
+              <option value="all">{t('All Sectors (Govt + Private)')}</option>
+              <option value="government">{t('Government Only')}</option>
+              <option value="psu">{t('PSU (Public Sector Undertaking)')}</option>
+              <option value="private">{t('Private Industry')}</option>
             </select>
           </div>
         </div>
@@ -434,7 +469,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:border-cyan-400 focus:outline-none"
             >
               {locations.map(loc => (
-                <option key={loc.value} value={loc.value}>{loc.label}</option>
+                <option key={loc.value} value={loc.value}>{t(loc.label)}</option>
               ))}
             </select>
 
@@ -445,7 +480,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:border-cyan-400 focus:outline-none"
             >
               {industries.map(ind => (
-                <option key={ind.value} value={ind.value}>{ind.label}</option>
+                <option key={ind.value} value={ind.value}>{t(ind.label)}</option>
               ))}
             </select>
 
@@ -455,11 +490,11 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               onChange={e => setSelectedSalary(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:border-cyan-400 focus:outline-none"
             >
-              <option value="all">Any Salary Range</option>
-              <option value="under_5">Up to ₹5 Lakh / yr</option>
-              <option value="5_to_12">₹5 - ₹12 Lakh / yr</option>
-              <option value="12_to_18">₹12 - ₹18 Lakh / yr</option>
-              <option value="above_18">₹18+ Lakh / yr</option>
+              <option value="all">{t('Any Salary Range')}</option>
+              <option value="under_5">{t('Up to ₹5 Lakh / yr')}</option>
+              <option value="5_to_12">{t('₹5 - ₹12 Lakh / yr')}</option>
+              <option value="12_to_18">{t('₹12 - ₹18 Lakh / yr')}</option>
+              <option value="above_18">{t('₹18+ Lakh / yr')}</option>
             </select>
 
             {/* Advanced Toggle */}
@@ -470,7 +505,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               }`}
             >
               <SlidersHorizontal className="w-3 h-3" />
-              <span>Filters</span>
+              <span>{t('filters')}</span>
             </button>
           </div>
 
@@ -483,7 +518,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                 onChange={e => setVeteranFriendlyOnly(e.target.checked)}
                 className="w-3.5 h-3.5 accent-cyan-400 rounded"
               />
-              <span className="font-mono text-[11px] text-cyan-300">Veteran Priority</span>
+              <span className="font-mono text-[11px] text-cyan-300">{t('veteran priority')}</span>
             </label>
 
             <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 select-none">
@@ -495,7 +530,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               />
               <span className="font-mono text-[11px] text-teal-300 flex items-center gap-1">
                 <Accessibility className="w-3 h-3" />
-                <span>Accessible Roles</span>
+                <span>{t('accessible opportunities')}</span>
               </span>
             </label>
 
@@ -508,23 +543,23 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               />
               <span className="font-mono text-[11px] text-emerald-300 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" />
-                <span>Verified Only</span>
+                <span>{t('verified only')}</span>
               </span>
             </label>
 
             {/* Sorting Dropdown */}
             <div className="flex items-center gap-1.5 pl-2 border-l border-slate-800">
-              <span className="text-slate-500 font-mono text-[11px]">Sort:</span>
+              <span className="text-slate-500 font-mono text-[11px]">{t('Sort:')}</span>
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
                 className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-cyan-300 focus:outline-none"
               >
-                <option value="fit">Veteran Match Score</option>
-                <option value="recent">Most Recent</option>
-                <option value="salary_high">Salary: High to Low</option>
-                <option value="salary_low">Salary: Low to High</option>
-                <option value="title">Title: A-Z</option>
+                <option value="fit">{t('Veteran Match Score')}</option>
+                <option value="recent">{t('Most Recent')}</option>
+                <option value="salary_high">{t('Salary: High to Low')}</option>
+                <option value="salary_low">{t('Salary: Low to High')}</option>
+                <option value="title">{t('Title: A-Z')}</option>
               </select>
             </div>
           </div>
@@ -534,30 +569,30 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
         {showAdvancedFilters && (
           <div className="pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs animate-fadeIn">
             <div>
-              <label className="block text-slate-400 font-mono text-[11px] mb-1">Target Experience Bracket</label>
+              <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Target Experience Bracket')}</label>
               <select
                 value={selectedExperience}
                 onChange={e => setSelectedExperience(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:border-cyan-400 focus:outline-none"
               >
-                <option value="all">All Experience Levels</option>
-                <option value="agniveer">Agniveer Cohorts (0 - 3 Years / Fresh Intake)</option>
-                <option value="mid">Mid-Career Ex-Service (4 - 8 Years / NCO)</option>
-                <option value="senior">Senior Veterans (9+ Years / JCO / Officers)</option>
+                <option value="all">{t('All Experience Levels')}</option>
+                <option value="agniveer">{t('Agniveer Cohorts (0 - 3 Years / Fresh Intake)')}</option>
+                <option value="mid">{t('Mid-Career Ex-Service (4 - 8 Years / NCO)')}</option>
+                <option value="senior">{t('Senior Veterans (9+ Years / JCO / Officers)')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-slate-400 font-mono text-[11px] mb-1">Education Requirements</label>
+              <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Education Requirements')}</label>
               <select
                 value={selectedEducation}
                 onChange={e => setSelectedEducation(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:border-cyan-400 focus:outline-none"
               >
-                <option value="all">Any Education Requirement</option>
-                <option value="army_cert">10th / 12th + Army Special Certificate</option>
-                <option value="diploma">ITI / Polytechnic / Military Diploma</option>
-                <option value="graduate">Civilian Graduate / B.Tech / Postgraduate</option>
+                <option value="all">{t('Any Education Requirement')}</option>
+                <option value="army_cert">{t('10th / 12th + Army Special Certificate')}</option>
+                <option value="diploma">{t('ITI / Polytechnic / Military Diploma')}</option>
+                <option value="graduate">{t('Civilian Graduate / B.Tech / Postgraduate')}</option>
               </select>
             </div>
 
@@ -578,7 +613,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                 }}
                 className="w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono transition-colors"
               >
-                Reset All Filters
+                {t('Reset All Filters')}
               </button>
             </div>
           </div>
@@ -587,17 +622,17 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
 
       {/* Opportunities Count */}
       <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-        <span>Displaying <strong>{sortedJobs.length}</strong> opportunities matching criteria</span>
-        <span>Showing real-time vetted listings</span>
+        <span>{t('Displaying')} <strong>{sortedJobs.length}</strong> {t('opportunities matching criteria')}</span>
+        <span>{t('Showing real-time vetted listings')}</span>
       </div>
 
       {/* Jobs Grid */}
       {sortedJobs.length === 0 ? (
         <div className="text-center py-16 p-8 rounded-2xl bg-[#071328]/80 border border-slate-800 space-y-3">
           <Briefcase className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-bold text-white">No Vacancies Match Your Filter</h3>
+          <h3 className="text-base font-bold text-white">{t('No Vacancies Match Your Filter')}</h3>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Try broadening your location, industry, or salary parameters to discover more veteran-accredited roles.
+            {t('Try broadening your location, industry, or salary parameters to discover more veteran-accredited roles.')}
           </p>
           <button
             onClick={() => {
@@ -609,7 +644,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             }}
             className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs hover:bg-cyan-400"
           >
-            Clear Search & Filters
+            {t('Clear Search & Filters')}
           </button>
         </div>
       ) : (
@@ -653,20 +688,20 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                       {job.verificationStatus === 'verified' ? (
                         <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-0.5 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/20">
                           <ShieldCheck className="w-3 h-3" />
-                          <span>Verified</span>
+                          <span>{t('Verified')}</span>
                         </span>
                       ) : (
                         <span className="text-[10px] font-mono text-amber-400 flex items-center gap-0.5 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/20">
                           <ShieldAlert className="w-3 h-3" />
-                          <span>Unverified</span>
+                          <span>{t('Unverified')}</span>
                         </span>
                       )}
 
                       {/* Accessible Role */}
                       {job.isAccessibleRole && (
-                        <span className="text-[10px] font-mono text-teal-400 flex items-center gap-0.5 bg-teal-950/40 px-1.5 py-0.5 rounded border border-teal-500/20" title="Accessible & Disability Friendly">
+                        <span className="text-[10px] font-mono text-teal-400 flex items-center gap-0.5 bg-teal-950/40 px-1.5 py-0.5 rounded border border-teal-500/20" title={t('Accessible & Disability Friendly')}>
                           <Accessibility className="w-3 h-3" />
-                          <span>Accessible</span>
+                          <span>{t('Accessible')}</span>
                         </span>
                       )}
                     </div>
@@ -675,8 +710,8 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                     <button
                       onClick={() => toggleSaveJob(job.id)}
                       className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-cyan-400 transition-colors"
-                      aria-label="Bookmark Opportunity"
-                      title={isSaved ? 'Remove Bookmark' : 'Bookmark Opportunity'}
+                      aria-label={t('Bookmark Opportunity')}
+                      title={isSaved ? t('Remove Bookmark') : t('Bookmark Opportunity')}
                     >
                       {isSaved ? (
                         <BookmarkCheck className="w-4 h-4 text-cyan-400" />
@@ -690,7 +725,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                   {job.isDuplicateOrFlagged && (
                     <div className="p-2.5 rounded-xl bg-amber-950/70 border border-amber-500/40 text-amber-300 text-[11px] flex items-center gap-2 mb-3">
                       <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
-                      <span>Flagged for review. Ensure official portal verification before sharing documents.</span>
+                      <span>{t('Flagged for review. Ensure official portal verification before sharing documents.')}</span>
                     </div>
                   )}
 
@@ -740,9 +775,9 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                   {/* Military Suitability & Skills */}
                   <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400 font-mono text-[11px]">Veteran Alignment Fit:</span>
+                      <span className="text-slate-400 font-mono text-[11px]">{t('Veteran Alignment Fit:')}</span>
                       <span className="font-mono font-bold text-emerald-400">
-                        {job.veteranFriendlyScore}% Match
+                        {job.veteranFriendlyScore}% {t('Match')}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1">
@@ -756,7 +791,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                       ))}
                       {job.civilianSkillsMatched.length > 4 && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-500">
-                          +{job.civilianSkillsMatched.length - 4} more
+                          +{job.civilianSkillsMatched.length - 4} {t('more')}
                         </span>
                       )}
                     </div>
@@ -771,13 +806,13 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                       className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-mono flex items-center gap-1 transition-colors"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      <span>Details</span>
+                      <span>{t('Details')}</span>
                     </button>
 
                     <button
                       onClick={() => handleOpenReportModal(job)}
                       className="p-1.5 rounded-lg bg-slate-900 hover:bg-red-950/50 text-slate-500 hover:text-red-400 text-xs transition-colors"
-                      title="Report Scam or Fake Listing"
+                      title={t('Report Scam or Fake Listing')}
                     >
                       <Flag className="w-3.5 h-3.5" />
                     </button>
@@ -790,10 +825,10 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                         target="_blank"
                         rel="noreferrer"
                         className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-400 text-xs font-mono flex items-center gap-1"
-                        title="Official Application Portal"
+                        title={t('Official Application Portal')}
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Official</span>
+                        <span className="hidden sm:inline">{t('Official')}</span>
                       </a>
                     )}
 
@@ -809,12 +844,12 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                       {applied ? (
                         <>
                           <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Applied</span>
+                          <span>{t('Applied')}</span>
                         </>
                       ) : (
                         <>
                           <Send className="w-3.5 h-3.5" />
-                          <span>Apply</span>
+                          <span>{t('Apply')}</span>
                         </>
                       )}
                     </button>
@@ -837,7 +872,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1.5">
                   <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-semibold">
-                    ROLE SPECIFICATION
+                    {t('ROLE SPECIFICATION')}
                   </span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-cyan-300 border border-cyan-500/20 uppercase">
                     {selectedJobForDetail.sector}
@@ -848,7 +883,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                   {selectedJobForDetail.verificationStatus === 'verified' && (
                     <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-0.5 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/20">
                       <ShieldCheck className="w-3 h-3" />
-                      <span>Verified Employer</span>
+                      <span>{t('Verified Employer')}</span>
                     </span>
                   )}
                 </div>
@@ -873,7 +908,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
               <span className="text-slate-300 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Zero Candidate Fee Policy. Never pay for applications or equipment.</span>
+                <span>{t('Zero Candidate Fee Policy. Never pay for applications or equipment.')}</span>
               </span>
               <button
                 onClick={() => {
@@ -884,33 +919,33 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                 className="text-red-400 hover:text-red-300 font-mono text-[11px] flex items-center gap-1"
               >
                 <Flag className="w-3 h-3" />
-                <span>Report Listing</span>
+                <span>{t('Report Listing')}</span>
               </button>
             </div>
 
             {/* Key Metadata Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
-                <span className="text-slate-500 font-mono text-[11px] block">Compensation</span>
+                <span className="text-slate-500 font-mono text-[11px] block">{t('Compensation')}</span>
                 <span className="font-bold text-emerald-400 font-mono mt-0.5 block">{selectedJobForDetail.salaryRange}</span>
               </div>
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
-                <span className="text-slate-500 font-mono text-[11px] block">Education</span>
+                <span className="text-slate-500 font-mono text-[11px] block">{t('Education')}</span>
                 <span className="font-semibold text-white mt-0.5 block">{selectedJobForDetail.educationRequired}</span>
               </div>
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
-                <span className="text-slate-500 font-mono text-[11px] block">Experience</span>
+                <span className="text-slate-500 font-mono text-[11px] block">{t('Experience')}</span>
                 <span className="font-semibold text-white mt-0.5 block">{selectedJobForDetail.experienceLevel}</span>
               </div>
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
-                <span className="text-slate-500 font-mono text-[11px] block">Veteran Fit</span>
-                <span className="font-bold text-cyan-400 font-mono mt-0.5 block">{selectedJobForDetail.veteranFriendlyScore}% Score</span>
+                <span className="text-slate-500 font-mono text-[11px] block">{t('Veteran Fit')}</span>
+                <span className="font-bold text-cyan-400 font-mono mt-0.5 block">{selectedJobForDetail.veteranFriendlyScore}% {t('Score')}</span>
               </div>
             </div>
 
             {/* Full Role Description */}
             <div className="space-y-2">
-              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">Position Overview</h4>
+              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">{t('Position Overview')}</h4>
               <p className="text-xs text-slate-300 leading-relaxed">
                 {selectedJobForDetail.description}
               </p>
@@ -918,11 +953,11 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
 
             {/* Eligibility Summary */}
             <div className="space-y-2">
-              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">Eligibility & Military Background</h4>
+              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">{t('Eligibility & Military Background')}</h4>
               <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 space-y-1.5">
                 <p>{selectedJobForDetail.eligibilitySummary}</p>
                 <div className="pt-2 border-t border-slate-800 flex flex-wrap gap-1.5">
-                  <span className="text-slate-500 text-[11px] font-mono">Recommended Branches:</span>
+                  <span className="text-slate-500 text-[11px] font-mono">{t('Recommended Branches:')}</span>
                   {selectedJobForDetail.militaryBackgroundSuitability.map(branch => (
                     <span key={branch} className="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/20 font-mono">
                       {branch}
@@ -934,7 +969,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
 
             {/* Civilian Skills Required */}
             <div className="space-y-2">
-              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">Translated Civilian Competencies</h4>
+              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">{t('Translated Civilian Competencies')}</h4>
               <div className="flex flex-wrap gap-2">
                 {selectedJobForDetail.civilianSkillsMatched.map(skill => (
                   <span
@@ -949,7 +984,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
 
             {/* Application Process Steps */}
             <div className="space-y-2">
-              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">Application Steps & Hiring Pipeline</h4>
+              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">{t('Application Steps & Hiring Pipeline')}</h4>
               <p className="text-xs text-slate-300 p-3 rounded-xl bg-slate-900 border border-slate-800">
                 {selectedJobForDetail.applicationProcess}
               </p>
@@ -965,7 +1000,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                   className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-700 text-xs font-mono flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Visit Official Portal</span>
+                  <span>{t('Visit Official Portal')}</span>
                 </a>
               ) : <div />}
 
@@ -974,7 +1009,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                   onClick={() => setSelectedJobForDetail(null)}
                   className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"
                 >
-                  Close
+                  {t('Close')}
                 </button>
 
                 <button
@@ -989,12 +1024,12 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                   {isJobApplied(selectedJobForDetail.id) ? (
                     <>
                       <Check className="w-4 h-4 text-emerald-950" />
-                      <span>Already Applied</span>
+                      <span>{t('Already Applied')}</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      <span>Apply via ValorBadge</span>
+                      <span>{t('Apply via ValorBadge')}</span>
                     </>
                   )}
                 </button>
@@ -1012,7 +1047,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <span className="text-[11px] font-mono text-cyan-400 uppercase tracking-widest">
-                  APPLICATION WITH CONSENT
+                  {t('APPLICATION WITH CONSENT')}
                 </span>
                 <h3 className="text-lg font-bold text-white">
                   {selectedJobForApply.title}
@@ -1032,37 +1067,37 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
               <Lock className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <span className="font-bold text-white text-[11px] uppercase font-mono tracking-wider">
-                  Veteran Privacy Guarantee
+                  {t('Veteran Privacy Guarantee')}
                 </span>
                 <p className="text-slate-400 text-[11px] leading-relaxed">
-                  Only translated civilian competencies and your chosen resume file are transmitted. Tactical military units, internal defense IDs, and sensitive data remain shielded.
+                  {t('Only translated civilian competencies and your chosen resume file are transmitted. Tactical military units, internal defense IDs, and sensitive data remain shielded.')}
                 </p>
               </div>
             </div>
 
             <form onSubmit={handleConfirmApply} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-400 font-mono text-[11px] mb-1">Select Resume Version</label>
+                <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Select Resume Version')}</label>
                 <select
                   value={selectedResume}
                   onChange={e => setSelectedResume(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-cyan-400 focus:outline-none font-mono"
                 >
-                  <option value="Civilian_Operations_Resume_v2.pdf">Civilian_Operations_Resume_v2.pdf (Verified Translation)</option>
-                  <option value="Executive_Logistics_Profile_2026.pdf">Executive_Logistics_Profile_2026.pdf (Detailed SOP Dossier)</option>
-                  <option value="Technical_Specialist_Resume.pdf">Technical_Specialist_Resume.pdf (Technical Equivalence)</option>
+                  <option value="Civilian_Operations_Resume_v2.pdf">Civilian_Operations_Resume_v2.pdf ({t('Verified Translation')})</option>
+                  <option value="Executive_Logistics_Profile_2026.pdf">Executive_Logistics_Profile_2026.pdf ({t('Detailed SOP Dossier')})</option>
+                  <option value="Technical_Specialist_Resume.pdf">Technical_Specialist_Resume.pdf ({t('Technical Equivalence')})</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-slate-400 font-mono text-[11px] mb-1">
-                  Optional Candidate Note for Hiring Team
+                  {t('Optional Candidate Note for Hiring Team')}
                 </label>
                 <textarea
                   rows={3}
                   value={applyNotes}
                   onChange={e => setApplyNotes(e.target.value)}
-                  placeholder="Share a brief civilian transition summary or location availability..."
+                  placeholder={t('Share a brief civilian transition summary or location availability...')}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-cyan-400 focus:outline-none"
                 />
               </div>
@@ -1078,7 +1113,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                   required
                 />
                 <label htmlFor="consentCheck" className="text-slate-300 text-xs leading-relaxed cursor-pointer select-none">
-                  <strong className="text-white">Grant Explicit Profile Sharing Consent:</strong> I authorize ValorBadge to transmit my translated civilian profile, contact email, and resume to {selectedJobForApply.company} strictly for this role.
+                  <strong className="text-white">{t('Grant Explicit Profile Sharing Consent:')}</strong> {t('I authorize ValorBadge to transmit my translated civilian profile, contact email, and resume to')} {selectedJobForApply.company} {t('strictly for this role.')}
                 </label>
               </div>
 
@@ -1088,14 +1123,14 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                   onClick={() => setSelectedJobForApply(null)}
                   className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white transition-colors"
                 >
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={!consentChecked}
                   className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-cyan-500/20"
                 >
-                  Confirm & Transmit Application
+                  {t('Confirm & Transmit Application')}
                 </button>
               </div>
             </form>
@@ -1110,7 +1145,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Flag className="w-5 h-5 text-red-400" />
-                <h3 className="text-base font-bold text-white">Report Opportunity</h3>
+                <h3 className="text-base font-bold text-white">{t('Report Opportunity')}</h3>
               </div>
               <button
                 onClick={() => setSelectedJobForReport(null)}
@@ -1123,42 +1158,42 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             {reportSuccess ? (
               <div className="py-6 text-center space-y-3">
                 <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto animate-bounce" />
-                <h4 className="text-sm font-bold text-white">Listing Flagged for Inspection</h4>
+                <h4 className="text-sm font-bold text-white">{t('Listing Flagged for Inspection')}</h4>
                 <p className="text-xs text-slate-400">
-                  Thank you for keeping the veteran community safe. Our Trust & Safety team will audit this vacancy.
+                  {t('Thank you for keeping the veteran community safe. Our Trust & Safety team will audit this vacancy.')}
                 </p>
               </div>
             ) : (
               <form onSubmit={handleSubmitScamReport} className="space-y-4 text-xs">
                 <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                  <span className="text-[11px] font-mono text-slate-400 block">Reporting vacancy:</span>
+                  <span className="text-[11px] font-mono text-slate-400 block">{t('Reporting vacancy:')}</span>
                   <span className="font-bold text-white block mt-0.5">{selectedJobForReport.title}</span>
                   <span className="text-cyan-400 text-[11px]">{selectedJobForReport.company}</span>
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 font-mono text-[11px] mb-1">Reason for Report *</label>
+                  <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Reason for Report *')}</label>
                   <select
                     value={scamReason}
                     onChange={e => setScamReason(e.target.value as any)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-red-400 focus:outline-none"
                   >
-                    <option value="fee_requested">Asked for money / registration / interview fee (Scam)</option>
-                    <option value="unverified_email">Suspicious email / non-official domain</option>
-                    <option value="fake_quota">Fake defense quota / misleading military tie-in</option>
-                    <option value="duplicate_expired">Expired or duplicate vacancy</option>
-                    <option value="misleading_terms">Inaccurate salary or misleading job location</option>
-                    <option value="other">Other compliance violation</option>
+                    <option value="fee_requested">{t('Asked for money / registration / interview fee (Scam)')}</option>
+                    <option value="unverified_email">{t('Suspicious email / non-official domain')}</option>
+                    <option value="fake_quota">{t('Fake defense quota / misleading military tie-in')}</option>
+                    <option value="duplicate_expired">{t('Expired or duplicate vacancy')}</option>
+                    <option value="misleading_terms">{t('Inaccurate salary or misleading job location')}</option>
+                    <option value="other">{t('Other compliance violation')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 font-mono text-[11px] mb-1">Details & Evidence</label>
+                  <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Details & Evidence')}</label>
                   <textarea
                     rows={3}
                     value={scamDetails}
                     onChange={e => setScamDetails(e.target.value)}
-                    placeholder="Describe what occurred (e.g. Received SMS asking for ₹500 fee, fake interviewer phone number)..."
+                    placeholder={t('Describe what occurred (e.g. Received SMS asking for ₹500 fee, fake interviewer phone number)...')}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-red-400 focus:outline-none"
                     required
                   />
@@ -1170,13 +1205,13 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                     onClick={() => setSelectedJobForReport(null)}
                     className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
                   >
-                    Cancel
+                    {t('Cancel')}
                   </button>
                   <button
                     type="submit"
                     className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors"
                   >
-                    Submit Report
+                    {t('Submit Report')}
                   </button>
                 </div>
               </form>
@@ -1193,7 +1228,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-lg font-bold text-white">Job Alerts & Notifications</h3>
+                <h3 className="text-lg font-bold text-white">{t('Job Alerts & Notifications')}</h3>
               </div>
               <button
                 onClick={() => setShowAlertsModal(false)}
@@ -1206,11 +1241,11 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             {/* Active Alerts List */}
             <div className="space-y-3">
               <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">
-                Active Match Triggers ({jobAlerts.length})
+                {t('Active Match Triggers')} ({jobAlerts.length})
               </h4>
 
               {jobAlerts.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">No custom alerts configured yet.</p>
+                <p className="text-xs text-slate-400 italic">{t('No custom alerts configured yet.')}</p>
               ) : (
                 jobAlerts.map(alert => (
                   <div
@@ -1223,11 +1258,11 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
                           alert.isActive ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
                         }`}>
-                          {alert.isActive ? 'Active' : 'Paused'}
+                          {alert.isActive ? t('Active') : t('Paused')}
                         </span>
                       </div>
-                      <p className="text-slate-400 text-[11px]">Keywords: <strong className="text-cyan-300">{alert.roleKeywords}</strong></p>
-                      <p className="text-slate-500 text-[10px]">{alert.location} • {alert.frequency} alerts</p>
+                      <p className="text-slate-400 text-[11px]">{t('Keywords:')} <strong className="text-cyan-300">{alert.roleKeywords}</strong></p>
+                      <p className="text-slate-500 text-[10px]">{alert.location} • {alert.frequency} {t('alerts')}</p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
@@ -1235,12 +1270,12 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                         onClick={() => toggleJobAlert(alert.id)}
                         className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono"
                       >
-                        {alert.isActive ? 'Pause' : 'Resume'}
+                        {alert.isActive ? t('Pause') : t('Resume')}
                       </button>
                       <button
                         onClick={() => deleteJobAlert(alert.id)}
                         className="px-2 py-1 rounded bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-400 text-[11px]"
-                        title="Delete Alert"
+                        title={t('Delete Alert')}
                       >
                         ✕
                       </button>
@@ -1254,19 +1289,19 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
             <div className="pt-4 border-t border-slate-800 space-y-4">
               <h4 className="text-xs font-mono uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <Plus className="w-3.5 h-3.5" />
-                <span>Create New Real-time Alert</span>
+                <span>{t('Create New Real-time Alert')}</span>
               </h4>
 
               {alertSuccess ? (
                 <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Job alert created! You will receive notifications when matching vacancies appear.</span>
+                  <span>{t('Job alert created! You will receive notifications when matching vacancies appear.')}</span>
                 </div>
               ) : (
                 <form onSubmit={handleCreateAlert} className="space-y-3 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-400 font-mono text-[11px] mb-1">Alert Name *</label>
+                      <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Alert Name *')}</label>
                       <input
                         type="text"
                         required
@@ -1278,7 +1313,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                     </div>
 
                     <div>
-                      <label className="block text-slate-400 font-mono text-[11px] mb-1">Keywords / Role Titles *</label>
+                      <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Keywords / Role Titles *')}</label>
                       <input
                         type="text"
                         required
@@ -1290,7 +1325,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                     </div>
 
                     <div>
-                      <label className="block text-slate-400 font-mono text-[11px] mb-1">Preferred Location</label>
+                      <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Preferred Location')}</label>
                       <input
                         type="text"
                         value={newAlertLocation}
@@ -1301,15 +1336,15 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                     </div>
 
                     <div>
-                      <label className="block text-slate-400 font-mono text-[11px] mb-1">Notification Frequency</label>
+                      <label className="block text-slate-400 font-mono text-[11px] mb-1">{t('Notification Frequency')}</label>
                       <select
                         value={newAlertFrequency}
                         onChange={e => setNewAlertFrequency(e.target.value as any)}
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-cyan-400 focus:outline-none capitalize"
                       >
-                        <option value="instant">Instant Real-time Dispatch</option>
-                        <option value="daily">Daily Morning Digest</option>
-                        <option value="weekly">Weekly Rollup</option>
+                        <option value="instant">{t('Instant Real-time Dispatch')}</option>
+                        <option value="daily">{t('Daily Morning Digest')}</option>
+                        <option value="weekly">{t('Weekly Rollup')}</option>
                       </select>
                     </div>
                   </div>
@@ -1319,7 +1354,7 @@ export const JobsInternshipsView: React.FC<JobsInternshipsViewProps> = ({ initia
                       type="submit"
                       className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20"
                     >
-                      Save & Activate Alert
+                      {t('Save & Activate Alert')}
                     </button>
                   </div>
                 </form>

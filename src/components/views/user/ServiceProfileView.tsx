@@ -35,6 +35,8 @@ import { useApp } from '../../../context/AppContext';
 import { SecurityNoticeBanner } from '../../common/SecurityNoticeBanner';
 import { DemoDataBadge } from '../../common/DemoDataBadge';
 import { ServiceProfileData, ProfileVisibility, EducationEntry, CivilianExperienceEntry } from '../../../types';
+import { sanitizeInput, validateEmail, screenClassifiedInfo } from '../../../lib/security';
+import { ConsentPrivacyScreen } from '../../common/ConsentPrivacyScreen';
 
 export const ServiceProfileView: React.FC = () => {
   const { 
@@ -44,7 +46,9 @@ export const ServiceProfileView: React.FC = () => {
     loadDemoProfile, 
     currentRole, 
     setCurrentRole, 
-    setCurrentRoute 
+    setCurrentRoute,
+    hasConsentedToPrivacy,
+    setHasConsentedToPrivacy
   } = useApp();
 
   const [formData, setFormData] = useState<ServiceProfileData>({ ...profile });
@@ -52,6 +56,13 @@ export const ServiceProfileView: React.FC = () => {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Consent modal state
+  const [showConsentModal, setShowConsentModal] = useState(false);
+
+  useEffect(() => {
+    setFormData({ ...profile });
+  }, [profile]);
 
   // Modals
   const [confirmClearModal, setConfirmClearModal] = useState(false);
@@ -121,9 +132,9 @@ export const ServiceProfileView: React.FC = () => {
     if (!formData.email.trim()) {
       errors.push('Email Address is required.');
     } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email.trim())) {
-        errors.push('Please provide a valid email format (e.g., name@domain.com).');
+      const emailVal = validateEmail(formData.email.trim());
+      if (!emailVal.isValid) {
+        errors.push(emailVal.error || 'Please provide a valid email format (e.g., name@domain.com).');
       }
     }
 
@@ -131,6 +142,12 @@ export const ServiceProfileView: React.FC = () => {
       errors.push('Phone Number is required.');
     } else if (formData.phone.replace(/[\s+-]/g, '').length < 8) {
       errors.push('Please enter a valid telephone number with country/area code.');
+    }
+
+    // Zero tactical data screening
+    const dutiesScreen = screenClassifiedInfo(formData.dutiesSummary || '');
+    if (!dutiesScreen.isClean) {
+      errors.push(dutiesScreen.warningMessage || 'Tactical operational keywords detected in duties summary. Please convert to general management terms.');
     }
 
     setValidationErrors(errors);
@@ -302,8 +319,26 @@ export const ServiceProfileView: React.FC = () => {
     }));
   };
 
+  // Pre-Profile Creation Gate: Mandatory Consent & Privacy Agreement
+  if (!hasConsentedToPrivacy && !profile.hasConsentedToPrivacy) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <ConsentPrivacyScreen
+          title="Consent & Privacy Agreement Required"
+          subtitle="ValorBadge collects only information needed for career support and strictly does not collect unnecessary personal data. Please confirm the mandatory defense security directive before creating your civilian career profile."
+          onContinue={() => {
+            setHasConsentedToPrivacy(true);
+            setFormData(prev => ({ ...prev, hasConsentedToPrivacy: true, consentTimestamp: new Date().toISOString() }));
+            updateProfile({ hasConsentedToPrivacy: true, consentTimestamp: new Date().toISOString() });
+          }}
+          onCancel={() => setCurrentRoute('landing')}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
       {/* Role Access Notice (If accessed while in Employer mode) */}
       {currentRole === 'employer' && (
@@ -333,6 +368,34 @@ export const ServiceProfileView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Consent & Privacy Assurance Banner */}
+      <div className="p-4 rounded-2xl bg-[#061022]/90 border border-cyan-500/20 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div className="text-slate-300">
+            <div className="font-bold text-white text-sm flex items-center gap-2">
+              <span>Consent & Defense Security Directives Active</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-semibold">
+                Protected
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              ValorBadge collects <strong>only information needed for career support</strong>. Do not enter classified, operational, deployment, weapon, security-sensitive, or sensitive location data.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowConsentModal(true)}
+          className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 text-xs font-bold shrink-0 transition-colors flex items-center gap-2"
+        >
+          <FileText className="w-4 h-4 text-cyan-400" />
+          <span>Review Consent & Privacy Policy</span>
+        </button>
+      </div>
 
       {/* Header Banner & CRUD Action Bar */}
       <div className="p-6 rounded-2xl bg-[#061022]/90 border border-slate-800 shadow-xl space-y-4">
@@ -2034,6 +2097,42 @@ export const ServiceProfileView: React.FC = () => {
                 Delete Entry
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Consent & Defense Directives Modal */}
+      {showConsentModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="review-consent-modal-title"
+        >
+          <div className="w-full max-w-3xl bg-[#091426] border border-cyan-500/40 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span id="review-consent-modal-title" className="text-xs font-mono uppercase text-cyan-400 font-bold tracking-wider">
+                  Privacy Policy & Defense Security Directives
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConsentModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <ConsentPrivacyScreen
+              title="Consent & Privacy Assurance Review"
+              subtitle="Re-verify ValorBadge data minimization guarantees and national defense operational security directives."
+              onContinue={() => setShowConsentModal(false)}
+              onCancel={() => setShowConsentModal(false)}
+            />
           </div>
         </div>
       )}
